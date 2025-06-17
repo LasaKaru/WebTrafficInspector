@@ -43,7 +43,7 @@
                 </StackPanel>
 
                 <TextBlock Text="Developer" FontSize="14" FontWeight="SemiBold" Foreground="#2C3E50" Margin="0,10,0,5"/>
-                <TextBlock Text="Developed by Lasakru" FontSize="12" Margin="0,0,0,5"/>
+                <TextBlock Text="Developed by Lasantha krunarathne" FontSize="12" Margin="0,0,0,5"/>
                 <TextBlock Text="Copyright © Googlex Technologies 2025" FontSize="12" Margin="0,0,0,15"/>
 
                 <TextBlock Text="License" FontSize="14" FontWeight="SemiBold" Foreground="#2C3E50" Margin="0,10,0,5"/>
