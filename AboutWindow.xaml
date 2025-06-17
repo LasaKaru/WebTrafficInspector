@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About Web Traffic Inspector" Height="800" Width="500"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
-        Icon="app.ico" Background="#F8F9FA">
+        Icon="logo.ico" Background="#F8F9FA">
 
     <Grid Margin="20">
         <Grid.RowDefinitions>

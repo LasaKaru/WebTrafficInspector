@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Traffic Inspector - Start Page</title>
+    <link rel="stylesheet" href="css/startpage.css">
+    <link rel="icon" type="image/x-icon" href="logo.ico">
+</head>
+<body>
+    <!-- Header Section -->
+    <!--<header class="header">
+        <div class="container">-->
+            <!-- Header Banner Ad -->
+            <!--<div class="header-ad">
+                <div id="header-banner-ad"></div>
+            </div>
+        </div>
+    </header>-->
+
+    <!-- Main Content Area -->
+    <!--<main class="main-content">-->
+        <!--<div class="container">-->
+            <!-- Welcome Section -->
+            <!--<section class="welcome-section">
+                <h2>Welcome to Web Traffic Inspector</h2>
+                <p>Start analyzing HTTP/HTTPS traffic with our professional-grade debugging proxy. Enter a URL below or use the navigation bar to begin.</p>
+            </section>-->
+
+            <!-- Search Section with Google Integration -->
+            <!--<section class="search-section">-->
+                <div class="search-container">
+                    <div class="google-search">
+                        <iframe src="https://www.google.com/webhp?igu=1"
+                                class="google-frame"
+                                title="Google Search"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox">
+                        </iframe>
+                    </div>
+
+                    <!-- Sidebar Native Ad -->
+                    <!--<div class="sidebar-ad">
+                        <div class="ad-label">Sponsored</div>
+                        <div id="native-banner-ad"></div>
+                    </div>-->
+                </div>
+            <!--</section>-->
+
+            <!-- Features Section -->
+            <!--<section class="features-section">
+                <h3>Key Features</h3>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔍</div>
+                        <h4>Real-time Traffic Capture</h4>
+                        <p>Monitor HTTP/HTTPS requests and responses in real-time</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h4>SSL/TLS Decryption</h4>
+                        <p>Decrypt and analyze HTTPS traffic with certificate management</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">💾</div>
+                        <h4>Session Management</h4>
+                        <p>Save and load traffic capture sessions for later analysis</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h4>Advanced Filtering</h4>
+                        <p>Filter and search through captured traffic with powerful tools</p>
+                    </div>
+                </div>
+            </section>-->
+
+            <!-- Quick Start Section -->
+            <!--<section class="quickstart-section">
+                <h3>Quick Start Guide</h3>
+                <ol class="quickstart-steps">
+                    <li>Enter a URL in the address bar above</li>
+                    <li>Browse normally - all traffic will be captured automatically</li>
+                    <li>View detailed request/response data in the traffic log</li>
+                    <li>Use filters to find specific requests or responses</li>
+                    <li>Save your session for later analysis</li>
+                </ol>
+            </section>-->
+        <!--</div>-->
+    <!--</main>-->
+
+    <!-- Footer Section -->
+    <footer class="footer">
+        <div class="container">
+            <!-- Footer Banner Ad -->
+            <div class="footer-ad">
+                <div class="ad-label">Advertisement</div>
+                <div id="footer-banner-ad"></div>
+            </div>
+
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p>&copy; 2025 Googlex Technologies. All rights reserved.</p>
+                    <p>Developed by Lasakru | <a href="#" onclick="showAbout()">About</a> | <a href="#" onclick="showSupport()">Support</a></p>
+                </div>
+                <div class="footer-links">
+                    <a href="#" onclick="showPrivacy()">Privacy Policy</a>
+                    <a href="#" onclick="showTerms()">Terms of Service</a>
+                    <a href="#" onclick="showContact()">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Social Bar Ad (Floating) -->
+    <div id="social-bar-ad" class="social-bar"></div>
+
+    <!-- Load JavaScript -->
+    <script src="js/startpage.js"></script>
+
+    <!-- Load Adsterra Ads -->
+    <script>
+        // Load ads after page content is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAdsterraAds();
+        });
+    </script>
+</body>
+</html>
