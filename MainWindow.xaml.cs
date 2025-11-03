@@ -578,12 +578,17 @@ namespace WebTrafficInspector
 
         private ProxyService _proxyService;
         private SessionService _sessionService;
+        private MoveService _moveService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
         private string _currentSessionPath = null;
         private string _currentSessionName = "Untitled Session";
         private bool _hasUnsavedChanges = false;
+
+        // Drag and drop support
+        private Point _dragStartPoint;
+        private TrafficEntry _draggedEntry = null;
         //private Grid MainGrid;
 
         public MainWindow()
@@ -617,6 +622,7 @@ namespace WebTrafficInspector
 
         private void SetupKeyboardShortcuts()
         {
+            // File operations
             var newSessionGesture = new KeyGesture(Key.N, ModifierKeys.Control);
             var openSessionGesture = new KeyGesture(Key.O, ModifierKeys.Control);
             var saveSessionGesture = new KeyGesture(Key.S, ModifierKeys.Control);
@@ -626,6 +632,19 @@ namespace WebTrafficInspector
             InputBindings.Add(new KeyBinding(new RelayCommand(_ => OpenSession_Click(null, null)), openSessionGesture));
             InputBindings.Add(new KeyBinding(new RelayCommand(_ => SaveSession_Click(null, null)), saveSessionGesture));
             InputBindings.Add(new KeyBinding(new RelayCommand(_ => SaveSessionAs_Click(null, null)), saveAsGesture));
+
+            // Move operations
+            var moveUpGesture = new KeyGesture(Key.Up, ModifierKeys.Control);
+            var moveDownGesture = new KeyGesture(Key.Down, ModifierKeys.Control);
+            var moveToTopGesture = new KeyGesture(Key.Home, ModifierKeys.Control);
+            var moveToBottomGesture = new KeyGesture(Key.End, ModifierKeys.Control);
+            var deleteGesture = new KeyGesture(Key.Delete, ModifierKeys.None);
+
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => MoveUp_Click(null, null)), moveUpGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => MoveDown_Click(null, null)), moveDownGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => MoveToTop_Click(null, null)), moveToTopGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => MoveToBottom_Click(null, null)), moveToBottomGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => DeleteSelected_Click(null, null)), deleteGesture));
         }
 
         private async void InitializeApplication()
@@ -635,6 +654,7 @@ namespace WebTrafficInspector
             TrafficDataGrid.ItemsSource = _filteredTrafficEntries;
 
             _sessionService = new SessionService();
+            _moveService = new MoveService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
@@ -1205,6 +1225,531 @@ namespace WebTrafficInspector
 
         #endregion
 
+        #region Move and Organize Handlers
+
+        // Basic Move Operations
+        private void MoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No entries selected";
+                return;
+            }
+
+            if (selectedItems.Count == 1)
+            {
+                if (_moveService.MoveUp(_filteredTrafficEntries, selectedItems[0]))
+                {
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = "Entry moved up";
+                }
+                else
+                {
+                    StatusText.Text = "Cannot move entry up";
+                }
+            }
+            else
+            {
+                if (_moveService.MoveBatchUp(_filteredTrafficEntries, selectedItems))
+                {
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = $"{selectedItems.Count} entries moved up";
+                }
+                else
+                {
+                    StatusText.Text = "Cannot move selected entries up";
+                }
+            }
+        }
+
+        private void MoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No entries selected";
+                return;
+            }
+
+            if (selectedItems.Count == 1)
+            {
+                if (_moveService.MoveDown(_filteredTrafficEntries, selectedItems[0]))
+                {
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = "Entry moved down";
+                }
+                else
+                {
+                    StatusText.Text = "Cannot move entry down";
+                }
+            }
+            else
+            {
+                if (_moveService.MoveBatchDown(_filteredTrafficEntries, selectedItems))
+                {
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = $"{selectedItems.Count} entries moved down";
+                }
+                else
+                {
+                    StatusText.Text = "Cannot move selected entries down";
+                }
+            }
+        }
+
+        private void MoveToTop_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                StatusText.Text = "No entry selected";
+                return;
+            }
+
+            if (_moveService.MoveToTop(_filteredTrafficEntries, selectedEntry))
+            {
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = "Entry moved to top";
+            }
+            else
+            {
+                StatusText.Text = "Cannot move entry to top";
+            }
+        }
+
+        private void MoveToBottom_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                StatusText.Text = "No entry selected";
+                return;
+            }
+
+            if (_moveService.MoveToBottom(_filteredTrafficEntries, selectedEntry))
+            {
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = "Entry moved to bottom";
+            }
+            else
+            {
+                StatusText.Text = "Cannot move entry to bottom";
+            }
+        }
+
+        private void MoveToPosition_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select an entry to move.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                $"Enter target position (1 to {_filteredTrafficEntries.Count}):",
+                "Move to Position",
+                "1");
+
+            if (int.TryParse(input, out int position) && position >= 1 && position <= _filteredTrafficEntries.Count)
+            {
+                if (_moveService.MoveToPosition(_filteredTrafficEntries, selectedEntry, position - 1))
+                {
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = $"Entry moved to position {position}";
+                }
+            }
+            else
+            {
+                MessageBox.Show("Invalid position. Please enter a number between 1 and " + _filteredTrafficEntries.Count,
+                    "Invalid Input", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // Reorder Operations
+        private void SortByTimeAsc_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.SortByTime(_filteredTrafficEntries, true);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries sorted by time (ascending)";
+        }
+
+        private void SortByTimeDesc_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.SortByTime(_filteredTrafficEntries, false);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries sorted by time (descending)";
+        }
+
+        private void GroupByHost_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.GroupByHost(_filteredTrafficEntries);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries grouped by host";
+        }
+
+        private void GroupByMethod_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.GroupByMethod(_filteredTrafficEntries);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries grouped by method";
+        }
+
+        private void GroupByStatus_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.GroupByStatus(_filteredTrafficEntries);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries grouped by status code";
+        }
+
+        private void ReverseOrder_Click(object sender, RoutedEventArgs e)
+        {
+            _moveService.ReverseOrder(_filteredTrafficEntries);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Entries order reversed";
+        }
+
+        // Smart Move Operations
+        private void MoveByHost_Click(object sender, RoutedEventArgs e)
+        {
+            var host = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter host name or pattern to move:",
+                "Move by Host",
+                "");
+
+            if (string.IsNullOrWhiteSpace(host))
+                return;
+
+            var newCollection = new ObservableCollection<TrafficEntry>();
+            var movedEntries = _moveService.MoveEntriesByHost(_filteredTrafficEntries, newCollection, host, true);
+
+            if (movedEntries.Count > 0)
+            {
+                var result = MessageBox.Show(
+                    $"Found {movedEntries.Count} entries matching '{host}'.\n\nDo you want to save them to a new session?",
+                    "Move by Host",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    SaveExtractedEntries(movedEntries, $"Host_{host}");
+                }
+
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = $"{movedEntries.Count} entries moved by host filter";
+            }
+            else
+            {
+                MessageBox.Show($"No entries found matching '{host}'",
+                    "Move by Host", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void MoveByStatus_Click(object sender, RoutedEventArgs e)
+        {
+            var statusInput = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter status code to move (e.g., 200, 404, 500):",
+                "Move by Status Code",
+                "");
+
+            if (int.TryParse(statusInput, out int statusCode))
+            {
+                var newCollection = new ObservableCollection<TrafficEntry>();
+                var movedEntries = _moveService.MoveEntriesByStatus(_filteredTrafficEntries, newCollection, statusCode, true);
+
+                if (movedEntries.Count > 0)
+                {
+                    var result = MessageBox.Show(
+                        $"Found {movedEntries.Count} entries with status code {statusCode}.\n\nDo you want to save them to a new session?",
+                        "Move by Status",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        SaveExtractedEntries(movedEntries, $"Status_{statusCode}");
+                    }
+
+                    SyncFilteredToMain();
+                    _hasUnsavedChanges = true;
+                    UpdateUI();
+                    StatusText.Text = $"{movedEntries.Count} entries moved by status code";
+                }
+                else
+                {
+                    MessageBox.Show($"No entries found with status code {statusCode}",
+                        "Move by Status", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        }
+
+        private void MoveByMethod_Click(object sender, RoutedEventArgs e)
+        {
+            var method = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter HTTP method to move (GET, POST, PUT, DELETE, etc.):",
+                "Move by Method",
+                "GET");
+
+            if (string.IsNullOrWhiteSpace(method))
+                return;
+
+            var newCollection = new ObservableCollection<TrafficEntry>();
+            var movedEntries = _moveService.MoveEntriesByMethod(_filteredTrafficEntries, newCollection, method, true);
+
+            if (movedEntries.Count > 0)
+            {
+                var result = MessageBox.Show(
+                    $"Found {movedEntries.Count} entries with method '{method}'.\n\nDo you want to save them to a new session?",
+                    "Move by Method",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    SaveExtractedEntries(movedEntries, $"Method_{method}");
+                }
+
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = $"{movedEntries.Count} entries moved by method filter";
+            }
+            else
+            {
+                MessageBox.Show($"No entries found with method '{method}'",
+                    "Move by Method", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void MoveByTimeRange_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Time range move functionality coming soon!\n\nThis will allow you to move all entries within a specific time range to a new session.",
+                "Move by Time Range", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // Extract and Session Management
+        private void ExtractToSession_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries to extract.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var sessionName = Microsoft.VisualBasic.Interaction.InputBox(
+                $"Enter name for new session ({selectedItems.Count} entries):",
+                "Extract to New Session",
+                "Extracted_Session");
+
+            if (string.IsNullOrWhiteSpace(sessionName))
+                return;
+
+            var result = MessageBox.Show(
+                "Do you want to remove the selected entries from the current session?",
+                "Extract Entries",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Cancel)
+                return;
+
+            bool removeFromSource = result == MessageBoxResult.Yes;
+            var extractedEntries = _moveService.ExtractEntries(_filteredTrafficEntries, selectedItems, removeFromSource);
+
+            if (removeFromSource)
+            {
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+            }
+
+            SaveExtractedEntries(extractedEntries, sessionName);
+        }
+
+        // Context Menu Handlers
+        private void CopyRequest_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry != null && !string.IsNullOrEmpty(selectedEntry.RawRequest))
+            {
+                Clipboard.SetText(selectedEntry.RawRequest);
+                StatusText.Text = "Request copied to clipboard";
+            }
+        }
+
+        private void CopyResponse_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry != null && !string.IsNullOrEmpty(selectedEntry.RawResponse))
+            {
+                Clipboard.SetText(selectedEntry.RawResponse);
+                StatusText.Text = "Response copied to clipboard";
+            }
+        }
+
+        private void CopyUrl_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry != null)
+            {
+                var url = $"{selectedEntry.Host}{selectedEntry.Path}";
+                Clipboard.SetText(url);
+                StatusText.Text = "URL copied to clipboard";
+            }
+        }
+
+        private void DeleteSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No entries selected";
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete {selectedItems.Count} selected entry/entries?",
+                "Delete Entries",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                foreach (var entry in selectedItems)
+                {
+                    _filteredTrafficEntries.Remove(entry);
+                }
+
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = $"{selectedItems.Count} entries deleted";
+            }
+        }
+
+        // Drag and Drop Support
+        private void TrafficDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+            var row = ItemsControl.ContainerFromElement((DataGrid)sender, e.OriginalSource as DependencyObject) as DataGridRow;
+            if (row != null)
+            {
+                _draggedEntry = row.Item as TrafficEntry;
+            }
+        }
+
+        private void TrafficDataGrid_DragOver(object sender, DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(typeof(TrafficEntry)))
+            {
+                e.Effects = DragDropEffects.None;
+            }
+        }
+
+        private void TrafficDataGrid_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(TrafficEntry)))
+            {
+                var droppedEntry = e.Data.GetData(typeof(TrafficEntry)) as TrafficEntry;
+                var target = ((FrameworkElement)e.OriginalSource).DataContext as TrafficEntry;
+
+                if (droppedEntry != null && target != null && droppedEntry != target)
+                {
+                    int sourceIndex = _filteredTrafficEntries.IndexOf(droppedEntry);
+                    int targetIndex = _filteredTrafficEntries.IndexOf(target);
+
+                    if (sourceIndex >= 0 && targetIndex >= 0)
+                    {
+                        _filteredTrafficEntries.Move(sourceIndex, targetIndex);
+                        _moveService.ReassignIds(_filteredTrafficEntries);
+                        SyncFilteredToMain();
+                        _hasUnsavedChanges = true;
+                        UpdateUI();
+                        StatusText.Text = "Entry moved via drag and drop";
+                    }
+                }
+            }
+        }
+
+        // Helper Methods
+        private void SyncFilteredToMain()
+        {
+            // Synchronize filtered entries back to main collection
+            // This ensures both collections stay in sync after move operations
+            _trafficEntries.Clear();
+            foreach (var entry in _filteredTrafficEntries)
+            {
+                _trafficEntries.Add(entry);
+            }
+        }
+
+        private async void SaveExtractedEntries(List<TrafficEntry> entries, string sessionName)
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Title = "Save Extracted Session",
+                Filter = "Web Traffic Inspector Session (*.wtis)|*.wtis",
+                InitialDirectory = _sessionService.GetDefaultSessionsPath(),
+                FileName = sessionName.Replace(" ", "_")
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                var description = $"Extracted session with {entries.Count} entries";
+                var success = await _sessionService.SaveSessionAsync(
+                    saveFileDialog.FileName,
+                    entries,
+                    Path.GetFileNameWithoutExtension(saveFileDialog.FileName),
+                    description);
+
+                if (success)
+                {
+                    MessageBox.Show(
+                        $"Session saved successfully!\n\nFile: {Path.GetFileName(saveFileDialog.FileName)}\nEntries: {entries.Count}",
+                        "Session Saved",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
+                    StatusText.Text = $"Extracted session saved: {entries.Count} entries";
+                }
+            }
+        }
+
+        #endregion
+
         #region Help Menu Handlers
 
         private void UserGuide_Click(object sender, RoutedEventArgs e)
@@ -1238,6 +1783,12 @@ namespace WebTrafficInspector
                            "  Ctrl+O - Open Session\n" +
                            "  Ctrl+S - Save Session\n" +
                            "  Ctrl+Shift+S - Save Session As\n\n" +
+                           "Move Operations:\n" +
+                           "  Ctrl+Up - Move Entry Up\n" +
+                           "  Ctrl+Down - Move Entry Down\n" +
+                           "  Ctrl+Home - Move to Top\n" +
+                           "  Ctrl+End - Move to Bottom\n" +
+                           "  Delete - Delete Selected Entries\n\n" +
                            "View Operations:\n" +
                            "  F11 - Toggle Full Screen\n" +
                            "  Ctrl++ - Zoom In\n" +

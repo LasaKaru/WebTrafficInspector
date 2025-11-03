@@ -155,6 +155,37 @@
                     </MenuItem.Icon>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="_Move and Organize">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔀" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Basic Move">
+                        <MenuItem Header="Move Up" Click="MoveUp_Click" InputGestureText="Ctrl+Up"/>
+                        <MenuItem Header="Move Down" Click="MoveDown_Click" InputGestureText="Ctrl+Down"/>
+                        <MenuItem Header="Move to Top" Click="MoveToTop_Click" InputGestureText="Ctrl+Home"/>
+                        <MenuItem Header="Move to Bottom" Click="MoveToBottom_Click" InputGestureText="Ctrl+End"/>
+                        <MenuItem Header="Move to Position..." Click="MoveToPosition_Click"/>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Reorder by">
+                        <MenuItem Header="Sort by Time (Ascending)" Click="SortByTimeAsc_Click"/>
+                        <MenuItem Header="Sort by Time (Descending)" Click="SortByTimeDesc_Click"/>
+                        <MenuItem Header="Group by Host" Click="GroupByHost_Click"/>
+                        <MenuItem Header="Group by Method" Click="GroupByMethod_Click"/>
+                        <MenuItem Header="Group by Status" Click="GroupByStatus_Click"/>
+                        <MenuItem Header="Reverse Order" Click="ReverseOrder_Click"/>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Smart Move">
+                        <MenuItem Header="Move by Host..." Click="MoveByHost_Click"/>
+                        <MenuItem Header="Move by Status Code..." Click="MoveByStatus_Click"/>
+                        <MenuItem Header="Move by Method..." Click="MoveByMethod_Click"/>
+                        <MenuItem Header="Move by Time Range..." Click="MoveByTimeRange_Click"/>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Extract to New Session..." Click="ExtractToSession_Click"/>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="_Search Traffic..." Click="SearchTraffic_Click" InputGestureText="Ctrl+F">
                     <MenuItem.Icon>
                         <TextBlock Text="🔍" FontSize="14"/>
@@ -278,11 +309,56 @@
                     </DockPanel>
                 </Border>
 
-                <DataGrid Grid.Row="1" Name="TrafficDataGrid" AutoGenerateColumns="False" 
-                          SelectionMode="Single" SelectionChanged="TrafficDataGrid_SelectionChanged"
+                <DataGrid Grid.Row="1" Name="TrafficDataGrid" AutoGenerateColumns="False"
+                          SelectionMode="Extended" SelectionChanged="TrafficDataGrid_SelectionChanged"
                           GridLinesVisibility="Horizontal" HeadersVisibility="Column"
                           RowHeaderWidth="0" CanUserAddRows="False" IsReadOnly="True"
-                          AlternatingRowBackground="#F9F9F9" FontSize="11">
+                          AlternatingRowBackground="#F9F9F9" FontSize="11"
+                          AllowDrop="True" PreviewMouseLeftButtonDown="TrafficDataGrid_PreviewMouseLeftButtonDown"
+                          Drop="TrafficDataGrid_Drop" DragOver="TrafficDataGrid_DragOver">
+                    <DataGrid.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Move Up" Click="MoveUp_Click" InputGestureText="Ctrl+Up">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="⬆️" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Move Down" Click="MoveDown_Click" InputGestureText="Ctrl+Down">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="⬇️" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Move to Top" Click="MoveToTop_Click" InputGestureText="Ctrl+Home">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="⏫" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Move to Bottom" Click="MoveToBottom_Click" InputGestureText="Ctrl+End">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="⏬" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Move to Position..." Click="MoveToPosition_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Copy">
+                                <MenuItem Header="Copy Raw Request" Click="CopyRequest_Click"/>
+                                <MenuItem Header="Copy Raw Response" Click="CopyResponse_Click"/>
+                                <MenuItem Header="Copy URL" Click="CopyUrl_Click"/>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Delete Selected" Click="DeleteSelected_Click">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="🗑️" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Extract to New Session..." Click="ExtractToSession_Click">
+                                <MenuItem.Icon>
+                                    <TextBlock Text="📤" FontSize="14"/>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </DataGrid.ContextMenu>
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Id}" Width="50" CanUserResize="False"/>
                         <DataGridTextColumn Header="Time" Binding="{Binding Timestamp, StringFormat=HH:mm:ss.fff}" Width="80"/>
