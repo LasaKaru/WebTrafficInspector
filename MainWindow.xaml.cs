@@ -595,6 +595,7 @@ namespace WebTrafficInspector
         private AttackSurfaceMapperService _attackSurfaceMapperService;
         private AutoResponderService _autoResponderService;
         private MacroRecorderService _macroRecorderService;
+        private AutoAttackModeService _autoAttackService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -702,6 +703,7 @@ namespace WebTrafficInspector
             _attackSurfaceMapperService = new AttackSurfaceMapperService();
             _autoResponderService = new AutoResponderService();
             _macroRecorderService = new MacroRecorderService();
+            _autoAttackService = new AutoAttackModeService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
@@ -789,6 +791,15 @@ namespace WebTrafficInspector
                 if (_filteredTrafficEntries.Count > 0)
                 {
                     TrafficDataGrid.ScrollIntoView(_filteredTrafficEntries[_filteredTrafficEntries.Count - 1]);
+                }
+
+                // Process through Auto Attack Mode if enabled
+                if (_autoAttackService != null && _autoAttackService.IsEnabled)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await _autoAttackService.ProcessTrafficEntry(entry);
+                    });
                 }
 
                 UpdateUI();
@@ -3587,6 +3598,115 @@ namespace WebTrafficInspector
             catch (Exception ex)
             {
                 MessageBox.Show($"Error generating security report: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Auto Attack Mode Handlers
+
+        private void ToggleAutoAttackMode_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _autoAttackService.IsEnabled = !_autoAttackService.IsEnabled;
+
+                if (_autoAttackService.IsEnabled)
+                {
+                    // Prompt for target URL using InputBox
+                    string targetUrl = Microsoft.VisualBasic.Interaction.InputBox(
+                        "Enter the base URL to attack (e.g., http://example.com):",
+                        "Enter Target URL",
+                        "",
+                        -1, -1);
+
+                    if (!string.IsNullOrWhiteSpace(targetUrl))
+                    {
+                        _autoAttackService.TargetUrl = targetUrl.Trim();
+                        StatusText.Text = $"Auto Attack Mode: ENABLED - Target: {targetUrl.Trim()}";
+                        MessageBox.Show($"Auto Attack Mode enabled for: {targetUrl.Trim()}\n\n" +
+                            "All traffic matching this domain will be automatically scanned for vulnerabilities.",
+                            "Auto Attack Mode Enabled", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        _autoAttackService.IsEnabled = false;
+                        MessageBox.Show("Auto Attack Mode requires a target URL.", "Error",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+                else
+                {
+                    StatusText.Text = "Auto Attack Mode: DISABLED";
+                    MessageBox.Show("Auto Attack Mode disabled.", "Auto Attack Mode",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error toggling Auto Attack Mode: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ShowAttackResults_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var resultsWindow = new Windows.AttackResultsWindow(_autoAttackService);
+                resultsWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening Attack Results window: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LoadXSSPayloads_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openDialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*",
+                    Title = "Select XSS Payloads File"
+                };
+
+                if (openDialog.ShowDialog() == true)
+                {
+                    _autoAttackService.LoadXSSPayloadsFromFile(openDialog.FileName);
+                    MessageBox.Show($"XSS payloads loaded successfully from:\n{openDialog.FileName}",
+                        "Payloads Loaded", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading XSS payloads: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ConfigureAutoAttack_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var message = "Auto Attack Mode Configuration:\n\n" +
+                    $"Status: {(_autoAttackService.IsEnabled ? "ENABLED" : "DISABLED")}\n" +
+                    $"Target URL: {_autoAttackService.TargetUrl ?? "Not Set"}\n\n" +
+                    "Attack Types:\n" +
+                    $"• XSS Scanning: {_autoAttackService.Options.EnableXSSScanning}\n" +
+                    $"• SQL Injection: {_autoAttackService.Options.EnableSQLInjectionScanning}\n" +
+                    $"• IDOR Scanning: {_autoAttackService.Options.EnableIDORScanning}\n\n" +
+                    $"Delay Between Requests: {_autoAttackService.Options.DelayBetweenRequests}ms";
+
+                MessageBox.Show(message, "Auto Attack Configuration",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error viewing configuration: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
