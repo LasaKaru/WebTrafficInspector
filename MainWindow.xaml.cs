@@ -1,4 +1,4 @@
-﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Text;
@@ -3217,7 +3217,7 @@ namespace WebTrafficInspector
                 {
                     var message = $"Found {headers.Count} unique headers:\n\n" +
                                 string.Join("\n", headers.Take(50).Select(h =>
-                                    $"{h.Name} - {h.OccurrenceCount} occurrences\n  Sample: {h.SampleValue?.Substring(0, Math.Min(50, h.SampleValue.Length ?? 0))}..."));
+                                    $"{h.Name} - {h.OccurrenceCount} occurrences\n  Sample: {h.SampleValue?.Substring(0, Math.Min(50, h.SampleValue.Length))}..."));
 
                     if (headers.Count > 50)
                         message += $"\n\n... and {headers.Count - 50} more";
@@ -3374,7 +3374,7 @@ namespace WebTrafficInspector
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    var htmlReport = _exportService.ExportSecurityReport(reports);
+                    var htmlReport = _exportService.ExportSecurityReport(reports, _currentSessionName);
                     var saveDialog = new SaveFileDialog
                     {
                         Filter = "HTML Files (*.html)|*.html",
@@ -3561,7 +3561,7 @@ namespace WebTrafficInspector
                 }
 
                 var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
-                var htmlReport = _exportService.ExportSecurityReport(reports);
+                var htmlReport = _exportService.ExportSecurityReport(reports, _currentSessionName);
 
                 var saveDialog = new SaveFileDialog
                 {
@@ -3727,7 +3727,7 @@ namespace WebTrafficInspector
 
         private void ExportHAR_Click(object sender, RoutedEventArgs e)
         {
-            ExportToFormat("HAR", "*.har", _exportService.ExportToHAR);
+            ExportToFormat("HAR", "*.har", entries => _exportService.ExportToHAR(entries));
         }
 
         private void ExportJSON_Click(object sender, RoutedEventArgs e)
@@ -3747,7 +3747,7 @@ namespace WebTrafficInspector
 
         private void ExportMarkdown_Click(object sender, RoutedEventArgs e)
         {
-            ExportToFormat("Markdown", "*.md", _exportService.ExportToMarkdown);
+            ExportToFormat("Markdown", "*.md", entries => _exportService.ExportToMarkdown(entries));
         }
 
         private void ExportBurp_Click(object sender, RoutedEventArgs e)
@@ -3768,7 +3768,7 @@ namespace WebTrafficInspector
                 }
 
                 var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
-                var htmlReport = _exportService.ExportSecurityReport(reports);
+                var htmlReport = _exportService.ExportSecurityReport(reports, _currentSessionName);
 
                 var saveDialog = new SaveFileDialog
                 {

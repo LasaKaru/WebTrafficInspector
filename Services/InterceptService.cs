@@ -182,7 +182,7 @@ namespace WebTrafficInspector.Services
                     if (!string.IsNullOrEmpty(rule.ReplacementResponse))
                     {
                         entry.RawResponse = rule.ReplacementResponse;
-                        entry.StatusCode = rule.ReplacementStatusCode ?? entry.StatusCode;
+                        entry.Status = rule.ReplacementStatusCode ?? entry.Status;
                     }
                     break;
 
@@ -282,12 +282,11 @@ namespace WebTrafficInspector.Services
                 Id = entry.Id,
                 Timestamp = entry.Timestamp,
                 Method = entry.Method,
-                Url = entry.Url,
                 Host = entry.Host,
                 Path = entry.Path,
-                StatusCode = entry.StatusCode,
+                Status = entry.Status,
                 ContentType = entry.ContentType,
-                Size = entry.Size,
+                Length = entry.Length,
                 Duration = entry.Duration,
                 RawRequest = entry.RawRequest,
                 RawResponse = entry.RawResponse,

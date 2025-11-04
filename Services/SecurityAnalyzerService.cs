@@ -16,7 +16,35 @@ namespace WebTrafficInspector.Services
 
         public SecurityAnalyzerService()
         {
-            InitializePatterns();
+            _vulnerabilityPatterns = new List<SecurityPattern>
+            {
+                new SecurityPattern
+                {
+                    Type = "Debug Information Exposure",
+                    Pattern = @"(stacktrace|exception|error|debug|trace)",
+                    Severity = "Medium",
+                    Description = "Response contains debug information",
+                    Recommendation = "Disable debug mode in production"
+                },
+                new SecurityPattern
+                {
+                    Type = "Directory Listing",
+                    Pattern = @"Index of /|Directory listing for",
+                    Severity = "Medium",
+                    Description = "Directory listing enabled",
+                    Recommendation = "Disable directory listing"
+                },
+                new SecurityPattern
+                {
+                    Type = "Weak Encryption",
+                    Pattern = @"(SSL_?v?[23]|TLS_?v?1\.?[01]|RC4|MD5)",
+                    Severity = "High",
+                    Description = "Weak encryption protocol detected",
+                    Recommendation = "Use TLS 1.2 or higher"
+                }
+            };
+
+            _sensitiveDataPatterns = new List<string>();
         }
 
         /// <summary>
@@ -49,6 +77,30 @@ namespace WebTrafficInspector.Services
 
             // Analyze URL
             report.UrlIssues.AddRange(AnalyzeUrl(entry.Path));
+
+            // Populate new properties
+            report.HighSeverityCount = report.RequestIssues.Count(i => i.Severity == "High" || i.Severity == "Critical") +
+                                     report.ResponseIssues.Count(i => i.Severity == "High" || i.Severity == "Critical") +
+                                     report.UrlIssues.Count(i => i.Severity == "High" || i.Severity == "Critical") +
+                                     report.InjectionAttempts.Count(i => i.Severity == "High" || i.Severity == "Critical");
+            report.MediumSeverityCount = report.RequestIssues.Count(i => i.Severity == "Medium") +
+                                        report.ResponseIssues.Count(i => i.Severity == "Medium") +
+                                        report.UrlIssues.Count(i => i.Severity == "Medium") +
+                                        report.InjectionAttempts.Count(i => i.Severity == "Medium");
+            report.LowSeverityCount = report.RequestIssues.Count(i => i.Severity == "Low") +
+                                     report.ResponseIssues.Count(i => i.Severity == "Low") +
+                                     report.UrlIssues.Count(i => i.Severity == "Low") +
+                                     report.InjectionAttempts.Count(i => i.Severity == "Low");
+
+            // Combine all issues
+            report.Issues.AddRange(report.RequestIssues);
+            report.Issues.AddRange(report.ResponseIssues);
+            report.Issues.AddRange(report.UrlIssues);
+            report.Issues.AddRange(report.InjectionAttempts);
+
+            // Combine sensitive data
+            report.SensitiveDataFound.AddRange(report.SensitiveDataInRequest);
+            report.SensitiveDataFound.AddRange(report.SensitiveDataInResponse);
 
             // Calculate risk score
             report.RiskScore = CalculateRiskScore(report);
@@ -447,39 +499,6 @@ namespace WebTrafficInspector.Services
                 .Take(10)
                 .ToList();
         }
-
-        private void InitializePatterns()
-        {
-            _vulnerabilityPatterns = new List<SecurityPattern>
-            {
-                new SecurityPattern
-                {
-                    Type = "Debug Information Exposure",
-                    Pattern = @"(stacktrace|exception|error|debug|trace)",
-                    Severity = "Medium",
-                    Description = "Response contains debug information",
-                    Recommendation = "Disable debug mode in production"
-                },
-                new SecurityPattern
-                {
-                    Type = "Directory Listing",
-                    Pattern = @"Index of /|Directory listing for",
-                    Severity = "Medium",
-                    Description = "Directory listing enabled",
-                    Recommendation = "Disable directory listing"
-                },
-                new SecurityPattern
-                {
-                    Type = "Weak Encryption",
-                    Pattern = @"(SSL_?v?[23]|TLS_?v?1\.?[01]|RC4|MD5)",
-                    Severity = "High",
-                    Description = "Weak encryption protocol detected",
-                    Recommendation = "Use TLS 1.2 or higher"
-                }
-            };
-
-            _sensitiveDataPatterns = new List<string>();
-        }
     }
 
     public class SecurityReport
@@ -496,6 +515,11 @@ namespace WebTrafficInspector.Services
         public SecurityHeadersAnalysis SecurityHeaders { get; set; }
         public int RiskScore { get; set; }
         public string RiskLevel { get; set; }
+        public int HighSeverityCount { get; set; }
+        public int MediumSeverityCount { get; set; }
+        public int LowSeverityCount { get; set; }
+        public List<SecurityIssue> Issues { get; set; } = new List<SecurityIssue>();
+        public List<SensitiveData> SensitiveDataFound { get; set; } = new List<SensitiveData>();
 
         public int TotalIssues => RequestIssues.Count + ResponseIssues.Count + UrlIssues.Count +
                                  SensitiveDataInRequest.Count + SensitiveDataInResponse.Count +

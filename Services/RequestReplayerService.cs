@@ -197,7 +197,7 @@ namespace WebTrafficInspector.Services
                     var contentTypeLine = lines.FirstOrDefault(l => l.StartsWith("Content-Type:", StringComparison.OrdinalIgnoreCase));
                     if (contentTypeLine != null)
                     {
-                        var contentType = contentTypeLine.Split(new[] { ": " }, 2)[1];
+                        var contentType = contentTypeLine.Split(new char[] { ':', ' ' }, 2)[1];
                         request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentType);
                     }
                 }

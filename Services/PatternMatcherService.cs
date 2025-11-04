@@ -11,12 +11,21 @@ namespace WebTrafficInspector.Services
     /// </summary>
     public class PatternMatcherService
     {
-        private readonly Dictionary<string, string> _commonPatterns;
-
-        public PatternMatcherService()
+        private readonly Dictionary<string, string> _commonPatterns = new Dictionary<string, string>
         {
-            InitializeCommonPatterns();
-        }
+            ["Email"] = @"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            ["IP Address"] = @"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+            ["URL"] = @"https?://[^\s<>""{}|\\^`\[\]]+",
+            ["Phone"] = @"\b(?:\+?\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b",
+            ["Credit Card"] = @"\b(?:\d{4}[-\s]?){3}\d{4}\b",
+            ["SSN"] = @"\b\d{3}-\d{2}-\d{4}\b",
+            ["API Key"] = @"\b[A-Za-z0-9_-]{32,}\b",
+            ["UUID"] = @"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
+            ["JWT"] = @"\beyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\b",
+            ["Hash (MD5)"] = @"\b[a-fA-F0-9]{32}\b",
+            ["Hash (SHA1)"] = @"\b[a-fA-F0-9]{40}\b",
+            ["Hash (SHA256)"] = @"\b[a-fA-F0-9]{64}\b"
+        };
 
         /// <summary>
         /// Search for a pattern across all traffic entries
@@ -168,7 +177,22 @@ namespace WebTrafficInspector.Services
                 }
             }
 
-            return parameters;
+            // Group by name and populate occurrence count
+            var groupedParameters = parameters
+                .GroupBy(p => p.Name)
+                .Select(g => new ParameterInfo
+                {
+                    Name = g.Key,
+                    Value = g.First().Value,
+                    Location = string.Join(", ", g.Select(p => p.Location).Distinct()),
+                    EntryId = g.First().EntryId,
+                    Url = g.First().Url,
+                    Type = g.First().Type,
+                    OccurrenceCount = g.Count()
+                })
+                .ToList();
+
+            return groupedParameters;
         }
 
         /// <summary>
@@ -234,7 +258,21 @@ namespace WebTrafficInspector.Services
                 }
             }
 
-            return headers;
+            // Group by name and populate occurrence count and sample value
+            var groupedHeaders = headers
+                .GroupBy(h => h.Name)
+                .Select(g => new HeaderInfo
+                {
+                    Name = g.Key,
+                    Value = g.First().Value,
+                    Type = g.First().Type,
+                    EntryId = g.First().EntryId,
+                    OccurrenceCount = g.Count(),
+                    SampleValue = g.First().Value
+                })
+                .ToList();
+
+            return groupedHeaders;
         }
 
         /// <summary>
@@ -305,7 +343,21 @@ namespace WebTrafficInspector.Services
                 }
             }
 
-            return cookies.DistinctBy(c => c.Name).ToList();
+            // Group by name and populate occurrence count
+            var groupedCookies = cookies
+                .GroupBy(c => c.Name)
+                .Select(g => new CookieInfo
+                {
+                    Name = g.Key,
+                    Value = g.First().Value,
+                    Source = string.Join(", ", g.Select(c => c.Source).Distinct()),
+                    EntryId = g.First().EntryId,
+                    Flags = g.SelectMany(c => c.Flags).Distinct().ToList(),
+                    OccurrenceCount = g.Count()
+                })
+                .ToList();
+
+            return groupedCookies;
         }
 
         /// <summary>
@@ -474,25 +526,6 @@ namespace WebTrafficInspector.Services
 
             return headers;
         }
-
-        private void InitializeCommonPatterns()
-        {
-            _commonPatterns = new Dictionary<string, string>
-            {
-                ["Email"] = @"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-                ["IP Address"] = @"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-                ["URL"] = @"https?://[^\s<>""{}|\\^`\[\]]+",
-                ["Phone"] = @"\b(?:\+?\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b",
-                ["Credit Card"] = @"\b(?:\d{4}[-\s]?){3}\d{4}\b",
-                ["SSN"] = @"\b\d{3}-\d{2}-\d{4}\b",
-                ["API Key"] = @"\b[A-Za-z0-9_-]{32,}\b",
-                ["UUID"] = @"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b",
-                ["JWT"] = @"\beyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\b",
-                ["Hash (MD5)"] = @"\b[a-fA-F0-9]{32}\b",
-                ["Hash (SHA1)"] = @"\b[a-fA-F0-9]{40}\b",
-                ["Hash (SHA256)"] = @"\b[a-fA-F0-9]{64}\b"
-            };
-        }
     }
 
     public class PatternMatch
@@ -518,6 +551,8 @@ namespace WebTrafficInspector.Services
         public string Location { get; set; }
         public int EntryId { get; set; }
         public string Url { get; set; }
+        public string Type { get; set; }
+        public int OccurrenceCount { get; set; }
     }
 
     public class EndpointInfo
@@ -537,6 +572,8 @@ namespace WebTrafficInspector.Services
         public string Value { get; set; }
         public string Type { get; set; }
         public int EntryId { get; set; }
+        public int OccurrenceCount { get; set; }
+        public string SampleValue { get; set; }
     }
 
     public class CookieInfo
@@ -546,5 +583,6 @@ namespace WebTrafficInspector.Services
         public string Source { get; set; }
         public int EntryId { get; set; }
         public List<string> Flags { get; set; } = new List<string>();
+        public int OccurrenceCount { get; set; }
     }
 }

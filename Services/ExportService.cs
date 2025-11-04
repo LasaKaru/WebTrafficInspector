@@ -405,7 +405,7 @@ namespace WebTrafficInspector.Services
 
             if (contentTypeLine != null)
             {
-                return contentTypeLine.Split(new[] { ": " }, 2)[1].Split(';')[0].Trim();
+                return contentTypeLine.Split(new char[] { ':', ' ' }, 2)[1].Split(';')[0].Trim();
             }
 
             return "text/plain";

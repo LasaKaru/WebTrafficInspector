@@ -229,8 +229,8 @@ namespace WebTrafficInspector.Services
                     {
                         report.TotalTests++;
 
-                        var modifiedBody = InjectPayloadInBody(entry.RawRequest, param, payload);
-                        var vulnerability = await TestPostRequest(entry.Url, modifiedBody, payload, $"POST Body: {param}", options);
+                        var modifiedBody = InjectPayloadInBody(entry.RawRequest, param.Key, payload);
+                        var vulnerability = await TestPostRequest(entry.Url, modifiedBody, payload, $"POST Body: {param.Key}", options);
 
                         if (vulnerability != null)
                         {
