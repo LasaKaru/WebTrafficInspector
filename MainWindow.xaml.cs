@@ -587,6 +587,14 @@ namespace WebTrafficInspector
         private ExportService _exportService;
         private PatternMatcherService _patternMatcherService;
         private ComparisonService _comparisonService;
+        private AdvancedFilterService _advancedFilterService;
+        private InterceptService _interceptService;
+        private VisualizationService _visualizationService;
+        private CookieManagerService _cookieManagerService;
+        private ResponseValidatorService _responseValidatorService;
+        private AttackSurfaceMapperService _attackSurfaceMapperService;
+        private AutoResponderService _autoResponderService;
+        private MacroRecorderService _macroRecorderService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -686,6 +694,14 @@ namespace WebTrafficInspector
             _exportService = new ExportService();
             _patternMatcherService = new PatternMatcherService();
             _comparisonService = new ComparisonService();
+            _advancedFilterService = new AdvancedFilterService();
+            _interceptService = new InterceptService();
+            _visualizationService = new VisualizationService();
+            _cookieManagerService = new CookieManagerService();
+            _responseValidatorService = new ResponseValidatorService();
+            _attackSurfaceMapperService = new AttackSurfaceMapperService();
+            _autoResponderService = new AutoResponderService();
+            _macroRecorderService = new MacroRecorderService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
