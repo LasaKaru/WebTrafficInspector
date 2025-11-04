@@ -18,6 +18,8 @@ namespace WebTrafficInspector.Models
         private long _length;
         private string _rawRequest;
         private string _rawResponse;
+        private double _duration;
+        private string _contentType;
 
         // Enhanced features
         private bool _isPinned;
@@ -78,6 +80,23 @@ namespace WebTrafficInspector.Models
             get => _rawResponse;
             set { _rawResponse = value; OnPropertyChanged(nameof(RawResponse)); }
         }
+
+        public double Duration
+        {
+            get => _duration;
+            set { _duration = value; OnPropertyChanged(nameof(Duration)); }
+        }
+
+        public string ContentType
+        {
+            get => _contentType;
+            set { _contentType = value; OnPropertyChanged(nameof(ContentType)); }
+        }
+
+        // Computed/Alias properties for compatibility
+        public string Url => $"http://{Host}{Path}";
+        public long Size => Length;
+        public int StatusCode => Status;
 
         // Enhanced properties
         public bool IsPinned

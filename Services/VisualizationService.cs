@@ -270,7 +270,7 @@ namespace WebTrafficInspector.Services
         {
             var endpoints = entries
                 .GroupBy(e => new { e.Method, e.Path })
-                .Select(g => new EndpointInfo
+                .Select(g => new EndpointStatistics
                 {
                     Method = g.Key.Method,
                     Path = g.Key.Path,
@@ -394,7 +394,7 @@ namespace WebTrafficInspector.Services
         public double MaxDuration { get; set; }
     }
 
-    public class EndpointInfo
+    public class EndpointStatistics
     {
         public string Method { get; set; }
         public string Path { get; set; }
@@ -411,10 +411,10 @@ namespace WebTrafficInspector.Services
 
     public class EndpointAnalysis
     {
-        public List<EndpointInfo> Endpoints { get; set; }
+        public List<EndpointStatistics> Endpoints { get; set; }
         public int TotalEndpoints { get; set; }
-        public List<EndpointInfo> HighTrafficEndpoints { get; set; }
-        public List<EndpointInfo> SlowEndpoints { get; set; }
-        public List<EndpointInfo> ErrorProneEndpoints { get; set; }
+        public List<EndpointStatistics> HighTrafficEndpoints { get; set; }
+        public List<EndpointStatistics> SlowEndpoints { get; set; }
+        public List<EndpointStatistics> ErrorProneEndpoints { get; set; }
     }
 }
