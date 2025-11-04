@@ -142,6 +142,27 @@
                 <MenuItem Header="_Always on Top" IsCheckable="True" Click="ToggleAlwaysOnTop_Click"/>
             </MenuItem>
 
+            <!--Edit Menu -->
+            <MenuItem Header="_Edit">
+                <MenuItem Header="_Undo" Click="Undo_Click" InputGestureText="Ctrl+Z">
+                    <MenuItem.Icon>
+                        <TextBlock Text="↶" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Redo" Click="Redo_Click" InputGestureText="Ctrl+Y">
+                    <MenuItem.Icon>
+                        <TextBlock Text="↷" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="Cu_t" Click="Cut_Click" InputGestureText="Ctrl+X"/>
+                <MenuItem Header="_Copy" Click="Copy_Click" InputGestureText="Ctrl+C"/>
+                <MenuItem Header="_Paste" Click="Paste_Click" InputGestureText="Ctrl+V"/>
+                <Separator/>
+                <MenuItem Header="Select _All" Click="SelectAll_Click" InputGestureText="Ctrl+A"/>
+                <MenuItem Header="_Deselect All" Click="DeselectAll_Click"/>
+            </MenuItem>
+
             <!-- Tools Menu -->
             <MenuItem Header="_Tools">
                 <MenuItem Header="_Proxy Settings..." Click="ProxySettings_Click">
@@ -183,7 +204,42 @@
                         <MenuItem Header="Move by Time Range..." Click="MoveByTimeRange_Click"/>
                     </MenuItem>
                     <Separator/>
+                    <MenuItem Header="Pin/Unpin">
+                        <MenuItem Header="Pin Selected" Click="PinSelected_Click"/>
+                        <MenuItem Header="Unpin Selected" Click="UnpinSelected_Click"/>
+                        <MenuItem Header="Move Pinned to Top" Click="MovePinnedToTop_Click"/>
+                    </MenuItem>
+                    <Separator/>
                     <MenuItem Header="Extract to New Session..." Click="ExtractToSession_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Tags and Labels">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🏷️" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Add Tags..." Click="AddTags_Click"/>
+                    <MenuItem Header="Remove Tags..." Click="RemoveTags_Click"/>
+                    <MenuItem Header="Filter by Tags..." Click="FilterByTags_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Set Color Highlight..." Click="SetColor_Click"/>
+                    <MenuItem Header="Clear Color Highlight" Click="ClearColor_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Duplicates">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔍" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Find Duplicates..." Click="FindDuplicates_Click"/>
+                    <MenuItem Header="Remove Duplicates..." Click="RemoveDuplicates_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Sessions">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📂" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Merge Sessions..." Click="MergeSessions_Click"/>
+                    <MenuItem Header="Split Session">
+                        <MenuItem Header="Split by Host..." Click="SplitByHost_Click"/>
+                        <MenuItem Header="Split by Status Category..." Click="SplitByStatus_Click"/>
+                        <MenuItem Header="Split by Time Interval..." Click="SplitByTime_Click"/>
+                    </MenuItem>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Search Traffic..." Click="SearchTraffic_Click" InputGestureText="Ctrl+F">
@@ -318,6 +374,10 @@
                           Drop="TrafficDataGrid_Drop" DragOver="TrafficDataGrid_DragOver">
                     <DataGrid.ContextMenu>
                         <ContextMenu>
+                            <MenuItem Header="Cut" Click="Cut_Click" InputGestureText="Ctrl+X"/>
+                            <MenuItem Header="Copy" Click="Copy_Click" InputGestureText="Ctrl+C"/>
+                            <MenuItem Header="Paste" Click="Paste_Click" InputGestureText="Ctrl+V"/>
+                            <Separator/>
                             <MenuItem Header="Move Up" Click="MoveUp_Click" InputGestureText="Ctrl+Up">
                                 <MenuItem.Icon>
                                     <TextBlock Text="⬆️" FontSize="14"/>
@@ -340,13 +400,23 @@
                             </MenuItem>
                             <MenuItem Header="Move to Position..." Click="MoveToPosition_Click"/>
                             <Separator/>
-                            <MenuItem Header="Copy">
+                            <MenuItem Header="Pin/Unpin">
+                                <MenuItem Header="Pin Selected" Click="PinSelected_Click"/>
+                                <MenuItem Header="Unpin Selected" Click="UnpinSelected_Click"/>
+                            </MenuItem>
+                            <MenuItem Header="Tags">
+                                <MenuItem Header="Add Tags..." Click="AddTags_Click"/>
+                                <MenuItem Header="Remove Tags..." Click="RemoveTags_Click"/>
+                            </MenuItem>
+                            <MenuItem Header="Set Color..." Click="SetColor_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Copy Data">
                                 <MenuItem Header="Copy Raw Request" Click="CopyRequest_Click"/>
                                 <MenuItem Header="Copy Raw Response" Click="CopyResponse_Click"/>
                                 <MenuItem Header="Copy URL" Click="CopyUrl_Click"/>
                             </MenuItem>
                             <Separator/>
-                            <MenuItem Header="Delete Selected" Click="DeleteSelected_Click">
+                            <MenuItem Header="Delete Selected" Click="DeleteSelected_Click" InputGestureText="Delete">
                                 <MenuItem.Icon>
                                     <TextBlock Text="🗑️" FontSize="14"/>
                                 </MenuItem.Icon>

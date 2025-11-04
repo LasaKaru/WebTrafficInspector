@@ -19,6 +19,12 @@ namespace WebTrafficInspector.Models
         private string _rawRequest;
         private string _rawResponse;
 
+        // Enhanced features
+        private bool _isPinned;
+        private string _tags;
+        private string _notes;
+        private string _color;
+
         public int Id
         {
             get => _id;
@@ -71,6 +77,31 @@ namespace WebTrafficInspector.Models
         {
             get => _rawResponse;
             set { _rawResponse = value; OnPropertyChanged(nameof(RawResponse)); }
+        }
+
+        // Enhanced properties
+        public bool IsPinned
+        {
+            get => _isPinned;
+            set { _isPinned = value; OnPropertyChanged(nameof(IsPinned)); }
+        }
+
+        public string Tags
+        {
+            get => _tags;
+            set { _tags = value; OnPropertyChanged(nameof(Tags)); }
+        }
+
+        public string Notes
+        {
+            get => _notes;
+            set { _notes = value; OnPropertyChanged(nameof(Notes)); }
+        }
+
+        public string Color
+        {
+            get => _color;
+            set { _color = value; OnPropertyChanged(nameof(Color)); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

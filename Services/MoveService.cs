@@ -454,8 +454,315 @@ namespace WebTrafficInspector.Services
                 UniqueStatusCodes = entries.Select(e => e.Status).Distinct().Count(),
                 TimeSpan = entries.Count > 1 ?
                     entries.Max(e => e.Timestamp) - entries.Min(e => e.Timestamp) :
-                    TimeSpan.Zero
+                    System.TimeSpan.Zero
             };
+        }
+
+        /// <summary>
+        /// Pin entries to keep them at top
+        /// </summary>
+        public void PinEntries(List<TrafficEntry> entries)
+        {
+            if (entries == null)
+                return;
+
+            foreach (var entry in entries)
+            {
+                entry.IsPinned = true;
+            }
+        }
+
+        /// <summary>
+        /// Unpin entries
+        /// </summary>
+        public void UnpinEntries(List<TrafficEntry> entries)
+        {
+            if (entries == null)
+                return;
+
+            foreach (var entry in entries)
+            {
+                entry.IsPinned = false;
+            }
+        }
+
+        /// <summary>
+        /// Move pinned entries to the top
+        /// </summary>
+        public void MovePinnedToTop(ObservableCollection<TrafficEntry> entries)
+        {
+            if (entries == null || entries.Count < 2)
+                return;
+
+            var pinnedEntries = entries.Where(e => e.IsPinned).ToList();
+            var unpinnedEntries = entries.Where(e => !e.IsPinned).ToList();
+
+            entries.Clear();
+
+            foreach (var entry in pinnedEntries.OrderBy(e => e.Id))
+            {
+                entries.Add(entry);
+            }
+
+            foreach (var entry in unpinnedEntries.OrderBy(e => e.Id))
+            {
+                entries.Add(entry);
+            }
+
+            ReassignIds(entries);
+        }
+
+        /// <summary>
+        /// Detect duplicate entries based on URL and method
+        /// </summary>
+        public List<DuplicateGroup> FindDuplicates(ObservableCollection<TrafficEntry> entries,
+            DuplicateCriteria criteria = DuplicateCriteria.UrlAndMethod)
+        {
+            if (entries == null || entries.Count < 2)
+                return new List<DuplicateGroup>();
+
+            var duplicateGroups = new List<DuplicateGroup>();
+
+            IEnumerable<IGrouping<string, TrafficEntry>> groups;
+
+            switch (criteria)
+            {
+                case DuplicateCriteria.UrlAndMethod:
+                    groups = entries.GroupBy(e => $"{e.Method}:{e.Host}{e.Path}");
+                    break;
+                case DuplicateCriteria.UrlOnly:
+                    groups = entries.GroupBy(e => $"{e.Host}{e.Path}");
+                    break;
+                case DuplicateCriteria.HostOnly:
+                    groups = entries.GroupBy(e => e.Host);
+                    break;
+                case DuplicateCriteria.RequestBody:
+                    groups = entries.GroupBy(e => e.RawRequest ?? "");
+                    break;
+                case DuplicateCriteria.ResponseBody:
+                    groups = entries.GroupBy(e => e.RawResponse ?? "");
+                    break;
+                default:
+                    groups = entries.GroupBy(e => $"{e.Method}:{e.Host}{e.Path}");
+                    break;
+            }
+
+            foreach (var group in groups.Where(g => g.Count() > 1))
+            {
+                duplicateGroups.Add(new DuplicateGroup
+                {
+                    Key = group.Key,
+                    Entries = group.ToList(),
+                    Count = group.Count()
+                });
+            }
+
+            return duplicateGroups.OrderByDescending(g => g.Count).ToList();
+        }
+
+        /// <summary>
+        /// Remove duplicate entries, keeping only the first occurrence
+        /// </summary>
+        public List<TrafficEntry> RemoveDuplicates(ObservableCollection<TrafficEntry> entries,
+            DuplicateCriteria criteria = DuplicateCriteria.UrlAndMethod,
+            bool keepFirst = true)
+        {
+            var duplicateGroups = FindDuplicates(entries, criteria);
+            var removedEntries = new List<TrafficEntry>();
+
+            foreach (var group in duplicateGroups)
+            {
+                var entriesToRemove = keepFirst ?
+                    group.Entries.Skip(1).ToList() :
+                    group.Entries.Take(group.Entries.Count - 1).ToList();
+
+                foreach (var entry in entriesToRemove)
+                {
+                    entries.Remove(entry);
+                    removedEntries.Add(entry);
+                }
+            }
+
+            ReassignIds(entries);
+            return removedEntries;
+        }
+
+        /// <summary>
+        /// Split entries into multiple collections based on host
+        /// </summary>
+        public Dictionary<string, List<TrafficEntry>> SplitByHost(ObservableCollection<TrafficEntry> entries)
+        {
+            if (entries == null)
+                return new Dictionary<string, List<TrafficEntry>>();
+
+            return entries.GroupBy(e => e.Host)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
+        /// <summary>
+        /// Split entries into multiple collections based on status code category
+        /// </summary>
+        public Dictionary<string, List<TrafficEntry>> SplitByStatusCategory(ObservableCollection<TrafficEntry> entries)
+        {
+            if (entries == null)
+                return new Dictionary<string, List<TrafficEntry>>();
+
+            return entries.GroupBy(e => GetStatusCategory(e.Status))
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+
+        /// <summary>
+        /// Split entries into multiple collections based on time intervals
+        /// </summary>
+        public Dictionary<string, List<TrafficEntry>> SplitByTimeInterval(
+            ObservableCollection<TrafficEntry> entries,
+            TimeSpan interval)
+        {
+            if (entries == null || entries.Count == 0)
+                return new Dictionary<string, List<TrafficEntry>>();
+
+            var minTime = entries.Min(e => e.Timestamp);
+            var result = new Dictionary<string, List<TrafficEntry>>();
+
+            foreach (var entry in entries)
+            {
+                var elapsed = entry.Timestamp - minTime;
+                var intervalNumber = (int)(elapsed.TotalSeconds / interval.TotalSeconds);
+                var key = $"Interval_{intervalNumber + 1}_{minTime.AddSeconds(intervalNumber * interval.TotalSeconds):HH:mm:ss}";
+
+                if (!result.ContainsKey(key))
+                {
+                    result[key] = new List<TrafficEntry>();
+                }
+
+                result[key].Add(entry);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Merge multiple collections into one
+        /// </summary>
+        public void MergeCollections(ObservableCollection<TrafficEntry> target,
+            List<List<TrafficEntry>> sources,
+            bool sortByTime = true)
+        {
+            var allEntries = new List<TrafficEntry>();
+
+            foreach (var source in sources)
+            {
+                allEntries.AddRange(source);
+            }
+
+            if (sortByTime)
+            {
+                allEntries = allEntries.OrderBy(e => e.Timestamp).ToList();
+            }
+
+            target.Clear();
+            foreach (var entry in allEntries)
+            {
+                target.Add(entry);
+            }
+
+            ReassignIds(target);
+        }
+
+        /// <summary>
+        /// Add tags to entries
+        /// </summary>
+        public void AddTags(List<TrafficEntry> entries, string tags)
+        {
+            if (entries == null || string.IsNullOrWhiteSpace(tags))
+                return;
+
+            foreach (var entry in entries)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Tags))
+                {
+                    entry.Tags = tags;
+                }
+                else
+                {
+                    var existingTags = entry.Tags.Split(',').Select(t => t.Trim()).ToList();
+                    var newTags = tags.Split(',').Select(t => t.Trim());
+
+                    foreach (var tag in newTags)
+                    {
+                        if (!existingTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                        {
+                            existingTags.Add(tag);
+                        }
+                    }
+
+                    entry.Tags = string.Join(", ", existingTags);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Remove tags from entries
+        /// </summary>
+        public void RemoveTags(List<TrafficEntry> entries, string tags)
+        {
+            if (entries == null || string.IsNullOrWhiteSpace(tags))
+                return;
+
+            var tagsToRemove = tags.Split(',').Select(t => t.Trim()).ToList();
+
+            foreach (var entry in entries)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Tags))
+                    continue;
+
+                var existingTags = entry.Tags.Split(',')
+                    .Select(t => t.Trim())
+                    .Where(t => !tagsToRemove.Contains(t, StringComparer.OrdinalIgnoreCase))
+                    .ToList();
+
+                entry.Tags = existingTags.Count > 0 ? string.Join(", ", existingTags) : null;
+            }
+        }
+
+        /// <summary>
+        /// Filter entries by tags
+        /// </summary>
+        public List<TrafficEntry> FilterByTags(ObservableCollection<TrafficEntry> entries, string tags)
+        {
+            if (entries == null || string.IsNullOrWhiteSpace(tags))
+                return new List<TrafficEntry>();
+
+            var searchTags = tags.Split(',').Select(t => t.Trim()).ToList();
+
+            return entries.Where(e =>
+                !string.IsNullOrWhiteSpace(e.Tags) &&
+                searchTags.Any(tag => e.Tags.Contains(tag, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        /// <summary>
+        /// Set color highlighting for entries
+        /// </summary>
+        public void SetColor(List<TrafficEntry> entries, string color)
+        {
+            if (entries == null)
+                return;
+
+            foreach (var entry in entries)
+            {
+                entry.Color = color;
+            }
+        }
+
+        private string GetStatusCategory(int status)
+        {
+            if (status >= 100 && status < 200) return "1xx_Informational";
+            if (status >= 200 && status < 300) return "2xx_Success";
+            if (status >= 300 && status < 400) return "3xx_Redirection";
+            if (status >= 400 && status < 500) return "4xx_ClientError";
+            if (status >= 500 && status < 600) return "5xx_ServerError";
+            return "Unknown";
         }
     }
 
@@ -469,5 +776,27 @@ namespace WebTrafficInspector.Services
         public int UniqueMethods { get; set; }
         public int UniqueStatusCodes { get; set; }
         public TimeSpan TimeSpan { get; set; }
+    }
+
+    /// <summary>
+    /// Criteria for detecting duplicates
+    /// </summary>
+    public enum DuplicateCriteria
+    {
+        UrlAndMethod,
+        UrlOnly,
+        HostOnly,
+        RequestBody,
+        ResponseBody
+    }
+
+    /// <summary>
+    /// Group of duplicate entries
+    /// </summary>
+    public class DuplicateGroup
+    {
+        public string Key { get; set; }
+        public List<TrafficEntry> Entries { get; set; }
+        public int Count { get; set; }
     }
 }

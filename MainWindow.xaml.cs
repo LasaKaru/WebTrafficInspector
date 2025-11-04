@@ -579,6 +579,8 @@ namespace WebTrafficInspector
         private ProxyService _proxyService;
         private SessionService _sessionService;
         private MoveService _moveService;
+        private UndoRedoService _undoRedoService;
+        private ClipboardService _clipboardService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -633,6 +635,21 @@ namespace WebTrafficInspector
             InputBindings.Add(new KeyBinding(new RelayCommand(_ => SaveSession_Click(null, null)), saveSessionGesture));
             InputBindings.Add(new KeyBinding(new RelayCommand(_ => SaveSessionAs_Click(null, null)), saveAsGesture));
 
+            // Edit operations
+            var undoGesture = new KeyGesture(Key.Z, ModifierKeys.Control);
+            var redoGesture = new KeyGesture(Key.Y, ModifierKeys.Control);
+            var cutGesture = new KeyGesture(Key.X, ModifierKeys.Control);
+            var copyGesture = new KeyGesture(Key.C, ModifierKeys.Control);
+            var pasteGesture = new KeyGesture(Key.V, ModifierKeys.Control);
+            var selectAllGesture = new KeyGesture(Key.A, ModifierKeys.Control);
+
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => Undo_Click(null, null)), undoGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => Redo_Click(null, null)), redoGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => Cut_Click(null, null)), cutGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => Copy_Click(null, null)), copyGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => Paste_Click(null, null)), pasteGesture));
+            InputBindings.Add(new KeyBinding(new RelayCommand(_ => SelectAll_Click(null, null)), selectAllGesture));
+
             // Move operations
             var moveUpGesture = new KeyGesture(Key.Up, ModifierKeys.Control);
             var moveDownGesture = new KeyGesture(Key.Down, ModifierKeys.Control);
@@ -655,6 +672,8 @@ namespace WebTrafficInspector
 
             _sessionService = new SessionService();
             _moveService = new MoveService();
+            _undoRedoService = new UndoRedoService();
+            _clipboardService = new ClipboardService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
@@ -1746,6 +1765,561 @@ namespace WebTrafficInspector
                     StatusText.Text = $"Extracted session saved: {entries.Count} entries";
                 }
             }
+        }
+
+        #endregion
+
+        #region Edit Menu Handlers
+
+        // Undo/Redo
+        private void Undo_Click(object sender, RoutedEventArgs e)
+        {
+            if (_undoRedoService.CanUndo)
+            {
+                _undoRedoService.Undo(_filteredTrafficEntries);
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = $"Undone: {_undoRedoService.GetUndoDescription()}";
+            }
+            else
+            {
+                StatusText.Text = "Nothing to undo";
+            }
+        }
+
+        private void Redo_Click(object sender, RoutedEventArgs e)
+        {
+            if (_undoRedoService.CanRedo)
+            {
+                _undoRedoService.Redo(_filteredTrafficEntries);
+                SyncFilteredToMain();
+                _hasUnsavedChanges = true;
+                UpdateUI();
+                StatusText.Text = $"Redone: {_undoRedoService.GetRedoDescription()}";
+            }
+            else
+            {
+                StatusText.Text = "Nothing to redo";
+            }
+        }
+
+        // Clipboard operations
+        private void Cut_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No entries selected";
+                return;
+            }
+
+            _clipboardService.Cut(selectedItems);
+            StatusText.Text = $"{selectedItems.Count} entries cut to clipboard";
+        }
+
+        private void Copy_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No entries selected";
+                return;
+            }
+
+            _clipboardService.Copy(selectedItems);
+            StatusText.Text = $"{selectedItems.Count} entries copied to clipboard";
+        }
+
+        private void Paste_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_clipboardService.HasContent)
+            {
+                StatusText.Text = "Clipboard is empty";
+                return;
+            }
+
+            var action = new MoveAction("Paste entries", _filteredTrafficEntries);
+
+            var pastedEntries = _clipboardService.Paste();
+            var cutEntries = _clipboardService.GetCutEntries();
+
+            // Remove cut entries from source
+            foreach (var entry in cutEntries)
+            {
+                _filteredTrafficEntries.Remove(entry);
+            }
+
+            // Add pasted entries
+            foreach (var entry in pastedEntries)
+            {
+                _filteredTrafficEntries.Add(entry);
+            }
+
+            action.CaptureAfterState(_filteredTrafficEntries);
+            _undoRedoService.RecordAction(action);
+
+            _moveService.ReassignIds(_filteredTrafficEntries);
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"{pastedEntries.Count} entries pasted";
+        }
+
+        private void SelectAll_Click(object sender, RoutedEventArgs e)
+        {
+            TrafficDataGrid.SelectAll();
+            StatusText.Text = $"All {_filteredTrafficEntries.Count} entries selected";
+        }
+
+        private void DeselectAll_Click(object sender, RoutedEventArgs e)
+        {
+            TrafficDataGrid.UnselectAll();
+            StatusText.Text = "Selection cleared";
+        }
+
+        #endregion
+
+        #region Pin/Unpin Handlers
+
+        private void PinSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries to pin.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var action = new ModifyAction("Pin entries", selectedItems);
+            _moveService.PinEntries(selectedItems);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"{selectedItems.Count} entries pinned";
+        }
+
+        private void UnpinSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries to unpin.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var action = new ModifyAction("Unpin entries", selectedItems);
+            _moveService.UnpinEntries(selectedItems);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"{selectedItems.Count} entries unpinned";
+        }
+
+        private void MovePinnedToTop_Click(object sender, RoutedEventArgs e)
+        {
+            var action = new MoveAction("Move pinned to top", _filteredTrafficEntries);
+            _moveService.MovePinnedToTop(_filteredTrafficEntries);
+            action.CaptureAfterState(_filteredTrafficEntries);
+            _undoRedoService.RecordAction(action);
+
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = "Pinned entries moved to top";
+        }
+
+        #endregion
+
+        #region Tags and Color Handlers
+
+        private void AddTags_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries to tag.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var tags = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter tags (comma-separated):",
+                "Add Tags",
+                "");
+
+            if (string.IsNullOrWhiteSpace(tags))
+                return;
+
+            var action = new ModifyAction("Add tags", selectedItems);
+            _moveService.AddTags(selectedItems, tags);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"Tags added to {selectedItems.Count} entries";
+        }
+
+        private void RemoveTags_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var tags = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter tags to remove (comma-separated):",
+                "Remove Tags",
+                "");
+
+            if (string.IsNullOrWhiteSpace(tags))
+                return;
+
+            var action = new ModifyAction("Remove tags", selectedItems);
+            _moveService.RemoveTags(selectedItems, tags);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"Tags removed from {selectedItems.Count} entries";
+        }
+
+        private void FilterByTags_Click(object sender, RoutedEventArgs e)
+        {
+            var tags = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter tags to filter by (comma-separated):",
+                "Filter by Tags",
+                "");
+
+            if (string.IsNullOrWhiteSpace(tags))
+                return;
+
+            var matchingEntries = _moveService.FilterByTags(_trafficEntries, tags);
+
+            _filteredTrafficEntries.Clear();
+            foreach (var entry in matchingEntries)
+            {
+                _filteredTrafficEntries.Add(entry);
+            }
+
+            UpdateUI();
+            StatusText.Text = $"Filtered: {matchingEntries.Count} entries with tags '{tags}'";
+        }
+
+        private void SetColor_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select one or more entries.",
+                    "No Selection", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var color = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter color (Red, Green, Blue, Yellow, Orange, etc.):",
+                "Set Color",
+                "Yellow");
+
+            if (string.IsNullOrWhiteSpace(color))
+                return;
+
+            var action = new ModifyAction("Set color", selectedItems);
+            _moveService.SetColor(selectedItems, color);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"Color set for {selectedItems.Count} entries";
+        }
+
+        private void ClearColor_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                selectedItems = _filteredTrafficEntries.Where(e => !string.IsNullOrEmpty(e.Color)).ToList();
+            }
+
+            if (selectedItems.Count == 0)
+            {
+                StatusText.Text = "No colored entries found";
+                return;
+            }
+
+            var action = new ModifyAction("Clear color", selectedItems);
+            _moveService.SetColor(selectedItems, null);
+            action.CaptureAfterState(selectedItems);
+            _undoRedoService.RecordAction(action);
+
+            _hasUnsavedChanges = true;
+            UpdateUI();
+            StatusText.Text = $"Color cleared from {selectedItems.Count} entries";
+        }
+
+        #endregion
+
+        #region Duplicate Handlers
+
+        private void FindDuplicates_Click(object sender, RoutedEventArgs e)
+        {
+            var duplicates = _moveService.FindDuplicates(_filteredTrafficEntries, DuplicateCriteria.UrlAndMethod);
+
+            if (duplicates.Count == 0)
+            {
+                MessageBox.Show("No duplicates found!", "Find Duplicates",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var message = $"Found {duplicates.Count} groups of duplicates:\n\n";
+            int count = 0;
+            foreach (var group in duplicates.Take(10))
+            {
+                message += $"• {group.Key}: {group.Count} entries\n";
+                count++;
+            }
+
+            if (duplicates.Count > 10)
+            {
+                message += $"\n... and {duplicates.Count - 10} more groups";
+            }
+
+            message += $"\n\nTotal duplicate entries: {duplicates.Sum(g => g.Count - 1)}";
+
+            MessageBox.Show(message, "Duplicates Found", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void RemoveDuplicates_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will remove duplicate entries (keeping the first occurrence).\n\nContinue?",
+                "Remove Duplicates",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            var action = new MoveAction("Remove duplicates", _filteredTrafficEntries);
+            var removedEntries = _moveService.RemoveDuplicates(_filteredTrafficEntries, DuplicateCriteria.UrlAndMethod, true);
+            action.CaptureAfterState(_filteredTrafficEntries);
+            _undoRedoService.RecordAction(action);
+
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+
+            MessageBox.Show($"Removed {removedEntries.Count} duplicate entries.",
+                "Duplicates Removed", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = $"{removedEntries.Count} duplicates removed";
+        }
+
+        #endregion
+
+        #region Session Management Handlers
+
+        private void MergeSessions_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Title = "Select Sessions to Merge",
+                Filter = "Web Traffic Inspector Session (*.wtis)|*.wtis",
+                InitialDirectory = _sessionService.GetDefaultSessionsPath(),
+                Multiselect = true
+            };
+
+            if (openFileDialog.ShowDialog() != true || openFileDialog.FileNames.Length == 0)
+                return;
+
+            var sources = new List<List<TrafficEntry>>();
+
+            foreach (var file in openFileDialog.FileNames)
+            {
+                try
+                {
+                    var sessionData = _sessionService.LoadSessionAsync(file).Result;
+                    if (sessionData != null)
+                    {
+                        sources.Add(sessionData.TrafficEntries);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to load {Path.GetFileName(file)}: {ex.Message}",
+                        "Load Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+
+            if (sources.Count == 0)
+            {
+                MessageBox.Show("No sessions loaded successfully.", "Merge Sessions",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var action = new MoveAction("Merge sessions", _filteredTrafficEntries);
+            _moveService.MergeCollections(_filteredTrafficEntries, sources, true);
+            action.CaptureAfterState(_filteredTrafficEntries);
+            _undoRedoService.RecordAction(action);
+
+            SyncFilteredToMain();
+            _hasUnsavedChanges = true;
+            UpdateUI();
+
+            var totalEntries = sources.Sum(s => s.Count);
+            MessageBox.Show($"Merged {sources.Count} sessions ({totalEntries} entries) into current session.",
+                "Sessions Merged", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = $"{sources.Count} sessions merged";
+        }
+
+        private void SplitByHost_Click(object sender, RoutedEventArgs e)
+        {
+            var splitGroups = _moveService.SplitByHost(_filteredTrafficEntries);
+
+            if (splitGroups.Count <= 1)
+            {
+                MessageBox.Show("Not enough unique hosts to split.",
+                    "Split Session", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var message = $"Session can be split into {splitGroups.Count} sessions by host:\n\n";
+            foreach (var group in splitGroups.Take(10))
+            {
+                message += $"• {group.Key}: {group.Value.Count} entries\n";
+            }
+
+            if (splitGroups.Count > 10)
+            {
+                message += $"\n... and {splitGroups.Count - 10} more hosts";
+            }
+
+            message += "\n\nSave each host to a separate session file?";
+
+            var result = MessageBox.Show(message, "Split by Host",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                SaveSplitSessions(splitGroups);
+            }
+        }
+
+        private void SplitByStatus_Click(object sender, RoutedEventArgs e)
+        {
+            var splitGroups = _moveService.SplitByStatusCategory(_filteredTrafficEntries);
+
+            var message = $"Session can be split into {splitGroups.Count} sessions by status category:\n\n";
+            foreach (var group in splitGroups)
+            {
+                message += $"• {group.Key}: {group.Value.Count} entries\n";
+            }
+
+            message += "\n\nSave each category to a separate session file?";
+
+            var result = MessageBox.Show(message, "Split by Status",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                SaveSplitSessions(splitGroups);
+            }
+        }
+
+        private void SplitByTime_Click(object sender, RoutedEventArgs e)
+        {
+            var intervalInput = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter time interval in seconds:",
+                "Split by Time Interval",
+                "60");
+
+            if (!int.TryParse(intervalInput, out int seconds) || seconds <= 0)
+            {
+                MessageBox.Show("Invalid interval. Please enter a positive number.",
+                    "Invalid Input", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var splitGroups = _moveService.SplitByTimeInterval(_filteredTrafficEntries, TimeSpan.FromSeconds(seconds));
+
+            var message = $"Session can be split into {splitGroups.Count} time intervals:\n\n";
+            foreach (var group in splitGroups.Take(10))
+            {
+                message += $"• {group.Key}: {group.Value.Count} entries\n";
+            }
+
+            if (splitGroups.Count > 10)
+            {
+                message += $"\n... and {splitGroups.Count - 10} more intervals";
+            }
+
+            message += "\n\nSave each interval to a separate session file?";
+
+            var result = MessageBox.Show(message, "Split by Time",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                SaveSplitSessions(splitGroups);
+            }
+        }
+
+        private async void SaveSplitSessions(Dictionary<string, List<TrafficEntry>> splitGroups)
+        {
+            var folderDialog = new OpenFileDialog
+            {
+                Title = "Select Folder to Save Split Sessions",
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true,
+                FileName = "Folder Selection."
+            };
+
+            if (folderDialog.ShowDialog() != true)
+                return;
+
+            var folder = Path.GetDirectoryName(folderDialog.FileName);
+            int savedCount = 0;
+
+            foreach (var group in splitGroups)
+            {
+                var safeFileName = string.Join("_", group.Key.Split(Path.GetInvalidFileNameChars()));
+                var filePath = Path.Combine(folder, $"{safeFileName}.wtis");
+
+                try
+                {
+                    var success = await _sessionService.SaveSessionAsync(
+                        filePath,
+                        group.Value,
+                        safeFileName,
+                        $"Split session - {group.Value.Count} entries");
+
+                    if (success)
+                        savedCount++;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Failed to save {safeFileName}: {ex.Message}",
+                        "Save Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+
+            MessageBox.Show($"Successfully saved {savedCount} of {splitGroups.Count} sessions.",
+                "Split Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            StatusText.Text = $"{savedCount} split sessions saved";
         }
 
         #endregion
