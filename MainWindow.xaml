@@ -242,6 +242,63 @@
                     </MenuItem>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="_Request Replayer">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔄" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Replay Selected Request..." Click="ReplayRequest_Click"/>
+                    <MenuItem Header="Replay with Modifications..." Click="ReplayModified_Click"/>
+                    <MenuItem Header="Batch Replay..." Click="BatchReplay_Click"/>
+                    <MenuItem Header="Fuzzing Mode..." Click="FuzzReplay_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Encoding/Decoding">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔐" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Encoder/Decoder Tool..." Click="EncoderDecoder_Click"/>
+                    <MenuItem Header="JWT Decoder..." Click="JwtDecoder_Click"/>
+                    <MenuItem Header="Hash Calculator..." Click="HashCalculator_Click"/>
+                    <MenuItem Header="Auto-Decode..." Click="AutoDecode_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Pattern Matcher">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🎯" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Search Pattern..." Click="SearchPattern_Click"/>
+                    <MenuItem Header="Extract Common Patterns">
+                        <MenuItem Header="Extract Emails" Click="ExtractEmails_Click"/>
+                        <MenuItem Header="Extract URLs" Click="ExtractUrls_Click"/>
+                        <MenuItem Header="Extract IPs" Click="ExtractIPs_Click"/>
+                        <MenuItem Header="Extract API Keys" Click="ExtractAPIKeys_Click"/>
+                        <MenuItem Header="Extract JWTs" Click="ExtractJWTs_Click"/>
+                    </MenuItem>
+                    <MenuItem Header="Extract Parameters..." Click="ExtractParameters_Click"/>
+                    <MenuItem Header="Extract Headers..." Click="ExtractHeaders_Click"/>
+                    <MenuItem Header="Extract Cookies..." Click="ExtractCookies_Click"/>
+                    <MenuItem Header="List Endpoints..." Click="ListEndpoints_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Security Analyzer">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🛡️" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Analyze Selected Entry..." Click="AnalyzeSecurity_Click"/>
+                    <MenuItem Header="Analyze Entire Session..." Click="AnalyzeSession_Click"/>
+                    <MenuItem Header="Security Headers Check..." Click="SecurityHeaders_Click"/>
+                    <MenuItem Header="Find Vulnerabilities..." Click="FindVulnerabilities_Click"/>
+                    <MenuItem Header="Detect Injections..." Click="DetectInjections_Click"/>
+                    <MenuItem Header="Find Sensitive Data..." Click="FindSensitiveData_Click"/>
+                    <MenuItem Header="Generate Security Report..." Click="GenerateSecurityReport_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Comparison Tool">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⚖️" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Compare Two Entries..." Click="CompareEntries_Click"/>
+                    <MenuItem Header="Compare Requests..." Click="CompareRequests_Click"/>
+                    <MenuItem Header="Compare Responses..." Click="CompareResponses_Click"/>
+                    <MenuItem Header="Compare Sessions..." Click="CompareSessions_Click"/>
+                </MenuItem>
+                <Separator/>
                 <MenuItem Header="_Search Traffic..." Click="SearchTraffic_Click" InputGestureText="Ctrl+F">
                     <MenuItem.Icon>
                         <TextBlock Text="🔍" FontSize="14"/>
@@ -260,6 +317,19 @@
                     <MenuItem.Icon>
                         <TextBlock Text="📈" FontSize="14"/>
                     </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="_Export">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📤" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Export to HAR..." Click="ExportHAR_Click"/>
+                    <MenuItem Header="Export to JSON..." Click="ExportJSON_Click"/>
+                    <MenuItem Header="Export to CSV..." Click="ExportCSV_Click"/>
+                    <MenuItem Header="Export to XML..." Click="ExportXML_Click"/>
+                    <MenuItem Header="Export to Markdown..." Click="ExportMarkdown_Click"/>
+                    <MenuItem Header="Export to Burp Format..." Click="ExportBurp_Click"/>
+                    <MenuItem Header="Export Security Report (HTML)..." Click="ExportSecurityHTML_Click"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem Header="_Options..." Click="Options_Click" InputGestureText="Ctrl+,">
