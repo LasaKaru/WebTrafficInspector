@@ -581,6 +581,12 @@ namespace WebTrafficInspector
         private MoveService _moveService;
         private UndoRedoService _undoRedoService;
         private ClipboardService _clipboardService;
+        private RequestReplayerService _requestReplayerService;
+        private EncodingService _encodingService;
+        private SecurityAnalyzerService _securityAnalyzerService;
+        private ExportService _exportService;
+        private PatternMatcherService _patternMatcherService;
+        private ComparisonService _comparisonService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -674,6 +680,12 @@ namespace WebTrafficInspector
             _moveService = new MoveService();
             _undoRedoService = new UndoRedoService();
             _clipboardService = new ClipboardService();
+            _requestReplayerService = new RequestReplayerService();
+            _encodingService = new EncodingService();
+            _securityAnalyzerService = new SecurityAnalyzerService();
+            _exportService = new ExportService();
+            _patternMatcherService = new PatternMatcherService();
+            _comparisonService = new ComparisonService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
@@ -2682,6 +2694,1117 @@ namespace WebTrafficInspector
         private void ApplyAdvancedFilter(object filterCriteria)
         {
             // Placeholder for advanced filter implementation
+        }
+
+        #endregion
+
+        #region Request Replayer Handlers
+
+        private async void ReplayRequest_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select a request to replay.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var result = await _requestReplayerService.ReplayRequest(selectedEntry);
+
+                if (result.Success)
+                {
+                    var message = $"Request replayed successfully!\n\n" +
+                                $"Status: {result.StatusCode}\n" +
+                                $"Duration: {result.Duration.TotalMilliseconds:F0}ms\n" +
+                                $"Response Length: {result.ResponseBody?.Length ?? 0} bytes\n\n" +
+                                $"View full response in the Response tab?";
+
+                    var viewResult = MessageBox.Show(message, "Replay Success",
+                        MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+                    if (viewResult == MessageBoxResult.Yes)
+                    {
+                        ResponseTextBox.Text = result.ResponseBody ?? "No response body";
+                    }
+                }
+                else
+                {
+                    MessageBox.Show($"Request replay failed:\n{result.Error}", "Replay Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error replaying request: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void ReplayModified_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select a request to replay.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // TODO: Create a dialog for modifying request parameters
+            var modifiedUrl = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter modified URL (or leave blank to keep original):",
+                "Modify Request",
+                $"http://{selectedEntry.Host}{selectedEntry.Path}");
+
+            if (string.IsNullOrEmpty(modifiedUrl))
+                return;
+
+            try
+            {
+                var options = new ReplayOptions { ModifiedUrl = modifiedUrl };
+                var result = await _requestReplayerService.ReplayRequest(selectedEntry, options);
+
+                if (result.Success)
+                {
+                    MessageBox.Show($"Modified request replayed successfully!\n\n" +
+                                  $"Status: {result.StatusCode}\n" +
+                                  $"Duration: {result.Duration.TotalMilliseconds:F0}ms",
+                                  "Replay Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Request replay failed:\n{result.Error}", "Replay Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error replaying request: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BatchReplay_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select a request to replay.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var countStr = Microsoft.VisualBasic.Interaction.InputBox(
+                "How many times should the request be replayed?",
+                "Batch Replay",
+                "10");
+
+            if (!int.TryParse(countStr, out int count) || count < 1 || count > 100)
+            {
+                MessageBox.Show("Please enter a valid number between 1 and 100.", "Invalid Input",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var results = await _requestReplayerService.BatchReplay(selectedEntry, count);
+                var timeComparison = _comparisonService.CompareResponseTimes(results);
+
+                var message = $"Batch Replay Complete!\n\n" +
+                            $"Total Requests: {count}\n" +
+                            $"Successful: {results.Count(r => r.Success)}\n" +
+                            $"Failed: {results.Count(r => !r.Success)}\n\n" +
+                            $"Response Times:\n" +
+                            $"  Average: {timeComparison.AverageMs:F2}ms\n" +
+                            $"  Min: {timeComparison.MinMs:F2}ms\n" +
+                            $"  Max: {timeComparison.MaxMs:F2}ms\n" +
+                            $"  Median: {timeComparison.MedianMs:F2}ms\n" +
+                            $"  Std Dev: {timeComparison.StandardDeviation:F2}ms";
+
+                MessageBox.Show(message, "Batch Replay Results",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during batch replay: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void FuzzReplay_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select a request to fuzz.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var parameter = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter parameter name to fuzz:",
+                "Fuzzing Mode",
+                "");
+
+            if (string.IsNullOrEmpty(parameter))
+                return;
+
+            // Generate common fuzzing payloads
+            var payloads = new List<string>
+            {
+                "' OR '1'='1",
+                "\" OR \"1\"=\"1",
+                "<script>alert('XSS')</script>",
+                "../../../etc/passwd",
+                "; ls -la",
+                "{{7*7}}",
+                "${7*7}",
+                "' UNION SELECT NULL--",
+                "admin' --",
+                "1' ORDER BY 1--"
+            };
+
+            try
+            {
+                var results = await _requestReplayerService.FuzzReplay(selectedEntry, payloads, parameter);
+
+                var uniqueResponses = results.GroupBy(r => r.StatusCode).ToList();
+                var message = $"Fuzzing Complete!\n\n" +
+                            $"Total Payloads: {payloads.Count}\n" +
+                            $"Successful Requests: {results.Count(r => r.Success)}\n" +
+                            $"Unique Status Codes: {uniqueResponses.Count}\n\n" +
+                            $"Status Code Distribution:\n" +
+                            string.Join("\n", uniqueResponses.Select(g => $"  {g.Key}: {g.Count()} times"));
+
+                MessageBox.Show(message, "Fuzzing Results",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during fuzzing: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Encoding/Decoding Handlers
+
+        private void EncoderDecoder_Click(object sender, RoutedEventArgs e)
+        {
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter text to encode/decode:",
+                "Encoder/Decoder Tool",
+                "");
+
+            if (string.IsNullOrEmpty(input))
+                return;
+
+            var options = new string[]
+            {
+                "URL Encode", "URL Decode",
+                "Base64 Encode", "Base64 Decode",
+                "Hex Encode", "Hex Decode",
+                "HTML Encode", "HTML Decode",
+                "ROT13", "Auto-Decode"
+            };
+
+            var choice = Microsoft.VisualBasic.Interaction.InputBox(
+                "Select operation:\n" + string.Join("\n", options.Select((o, i) => $"{i + 1}. {o}")),
+                "Choose Operation",
+                "1");
+
+            if (!int.TryParse(choice, out int operation) || operation < 1 || operation > options.Length)
+                return;
+
+            try
+            {
+                string result = operation switch
+                {
+                    1 => _encodingService.UrlEncode(input),
+                    2 => _encodingService.UrlDecode(input),
+                    3 => _encodingService.Base64Encode(input),
+                    4 => _encodingService.Base64Decode(input),
+                    5 => _encodingService.HexEncode(input),
+                    6 => _encodingService.HexDecode(input),
+                    7 => _encodingService.HtmlEncode(input),
+                    8 => _encodingService.HtmlDecode(input),
+                    9 => _encodingService.ROT13(input),
+                    10 => _encodingService.AutoDecode(input).BestGuess?.Result ?? "No decoding detected",
+                    _ => "Invalid operation"
+                };
+
+                MessageBox.Show($"Result:\n\n{result}", "Encoding/Decoding Result",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during encoding/decoding: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void JwtDecoder_Click(object sender, RoutedEventArgs e)
+        {
+            var token = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter JWT token:",
+                "JWT Decoder",
+                "");
+
+            if (string.IsNullOrEmpty(token))
+                return;
+
+            try
+            {
+                var jwtInfo = _encodingService.DecodeJwt(token);
+
+                if (jwtInfo.IsValid)
+                {
+                    var message = $"JWT Decoded Successfully!\n\n" +
+                                $"Header:\n{jwtInfo.Header}\n\n" +
+                                $"Payload:\n{jwtInfo.Payload}\n\n" +
+                                $"Signature:\n{jwtInfo.Signature}";
+
+                    MessageBox.Show(message, "JWT Decoder",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Invalid JWT: {jwtInfo.Error}", "JWT Decoder",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error decoding JWT: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void HashCalculator_Click(object sender, RoutedEventArgs e)
+        {
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter text to hash:",
+                "Hash Calculator",
+                "");
+
+            if (string.IsNullOrEmpty(input))
+                return;
+
+            try
+            {
+                var md5 = _encodingService.MD5Hash(input);
+                var sha1 = _encodingService.SHA1Hash(input);
+                var sha256 = _encodingService.SHA256Hash(input);
+                var sha512 = _encodingService.SHA512Hash(input);
+
+                var message = $"Hash Results:\n\n" +
+                            $"MD5:\n{md5}\n\n" +
+                            $"SHA1:\n{sha1}\n\n" +
+                            $"SHA256:\n{sha256}\n\n" +
+                            $"SHA512:\n{sha512}";
+
+                MessageBox.Show(message, "Hash Calculator",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error calculating hashes: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void AutoDecode_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select an entry to auto-decode.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var text = selectedEntry.RawRequest ?? selectedEntry.RawResponse ?? "";
+                var extracted = _encodingService.ExtractEncodedStrings(text);
+
+                if (extracted.Any())
+                {
+                    var message = $"Found {extracted.Count} encoded strings:\n\n" +
+                                string.Join("\n\n", extracted.Select(e =>
+                                    $"{e.Type} at position {e.Position}:\n" +
+                                    $"Original: {e.Original.Substring(0, Math.Min(50, e.Original.Length))}...\n" +
+                                    $"Decoded: {e.Decoded.Substring(0, Math.Min(50, e.Decoded.Length))}..."));
+
+                    MessageBox.Show(message, "Auto-Decode Results",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No encoded strings detected.", "Auto-Decode",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during auto-decode: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Pattern Matcher Handlers
+
+        private void SearchPattern_Click(object sender, RoutedEventArgs e)
+        {
+            var pattern = Microsoft.VisualBasic.Interaction.InputBox(
+                "Enter pattern to search (regex supported):",
+                "Pattern Search",
+                "");
+
+            if (string.IsNullOrEmpty(pattern))
+                return;
+
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var matches = _patternMatcherService.SearchPattern(entries, pattern, isRegex: true);
+
+                if (matches.Any())
+                {
+                    var message = $"Found {matches.Count} matches:\n\n" +
+                                string.Join("\n", matches.Take(20).Select(m =>
+                                    $"Entry #{m.EntryId}: {m.MatchedText.Substring(0, Math.Min(50, m.MatchedText.Length))}..."));
+
+                    if (matches.Count > 20)
+                        message += $"\n\n... and {matches.Count - 20} more matches";
+
+                    MessageBox.Show(message, "Pattern Search Results",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No matches found.", "Pattern Search",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during pattern search: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExtractEmails_Click(object sender, RoutedEventArgs e)
+        {
+            ExtractCommonPattern("Email");
+        }
+
+        private void ExtractUrls_Click(object sender, RoutedEventArgs e)
+        {
+            ExtractCommonPattern("URL");
+        }
+
+        private void ExtractIPs_Click(object sender, RoutedEventArgs e)
+        {
+            ExtractCommonPattern("IP");
+        }
+
+        private void ExtractAPIKeys_Click(object sender, RoutedEventArgs e)
+        {
+            ExtractCommonPattern("APIKey");
+        }
+
+        private void ExtractJWTs_Click(object sender, RoutedEventArgs e)
+        {
+            ExtractCommonPattern("JWT");
+        }
+
+        private void ExtractCommonPattern(string patternType)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var extracted = _patternMatcherService.ExtractCommonPattern(entries, patternType);
+
+                if (extracted.Any())
+                {
+                    var uniqueValues = extracted.Select(e => e.Value).Distinct().ToList();
+                    var message = $"Found {uniqueValues.Count} unique {patternType}(s):\n\n" +
+                                string.Join("\n", uniqueValues.Take(50));
+
+                    if (uniqueValues.Count > 50)
+                        message += $"\n\n... and {uniqueValues.Count - 50} more";
+
+                    MessageBox.Show(message, $"Extract {patternType}s",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"No {patternType}s found.", $"Extract {patternType}s",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error extracting {patternType}s: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExtractParameters_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var parameters = _patternMatcherService.ExtractParameters(entries);
+
+                if (parameters.Any())
+                {
+                    var message = $"Found {parameters.Count} unique parameters:\n\n" +
+                                string.Join("\n", parameters.Take(50).Select(p =>
+                                    $"{p.Name} ({p.Type}) - {p.OccurrenceCount} occurrences"));
+
+                    if (parameters.Count > 50)
+                        message += $"\n\n... and {parameters.Count - 50} more";
+
+                    MessageBox.Show(message, "Extract Parameters",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No parameters found.", "Extract Parameters",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error extracting parameters: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExtractHeaders_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var headers = _patternMatcherService.ExtractHeaders(entries);
+
+                if (headers.Any())
+                {
+                    var message = $"Found {headers.Count} unique headers:\n\n" +
+                                string.Join("\n", headers.Take(50).Select(h =>
+                                    $"{h.Name} - {h.OccurrenceCount} occurrences\n  Sample: {h.SampleValue?.Substring(0, Math.Min(50, h.SampleValue.Length ?? 0))}..."));
+
+                    if (headers.Count > 50)
+                        message += $"\n\n... and {headers.Count - 50} more";
+
+                    MessageBox.Show(message, "Extract Headers",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No headers found.", "Extract Headers",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error extracting headers: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExtractCookies_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var cookies = _patternMatcherService.ExtractCookies(entries);
+
+                if (cookies.Any())
+                {
+                    var message = $"Found {cookies.Count} unique cookies:\n\n" +
+                                string.Join("\n", cookies.Take(50).Select(c =>
+                                    $"{c.Name} - {c.OccurrenceCount} occurrences"));
+
+                    if (cookies.Count > 50)
+                        message += $"\n\n... and {cookies.Count - 50} more";
+
+                    MessageBox.Show(message, "Extract Cookies",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No cookies found.", "Extract Cookies",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error extracting cookies: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ListEndpoints_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var endpoints = _patternMatcherService.ExtractEndpoints(entries);
+
+                if (endpoints.Any())
+                {
+                    var message = $"Found {endpoints.Count} unique endpoints:\n\n" +
+                                string.Join("\n", endpoints.Take(50).Select(ep =>
+                                    $"{ep.Method} {ep.Path} - {ep.RequestCount} requests"));
+
+                    if (endpoints.Count > 50)
+                        message += $"\n\n... and {endpoints.Count - 50} more";
+
+                    MessageBox.Show(message, "List Endpoints",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No endpoints found.", "List Endpoints",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error listing endpoints: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Security Analyzer Handlers
+
+        private void AnalyzeSecurity_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select an entry to analyze.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var report = _securityAnalyzerService.AnalyzeEntry(selectedEntry);
+
+                var message = $"Security Analysis Report\n\n" +
+                            $"Risk Level: {report.RiskLevel}\n" +
+                            $"Risk Score: {report.RiskScore}/100\n\n" +
+                            $"Issues Found: {report.TotalIssues}\n" +
+                            $"  High: {report.HighSeverityCount}\n" +
+                            $"  Medium: {report.MediumSeverityCount}\n" +
+                            $"  Low: {report.LowSeverityCount}\n\n";
+
+                if (report.Issues.Any())
+                {
+                    message += "Issues:\n" +
+                             string.Join("\n", report.Issues.Take(10).Select(i =>
+                                 $"  [{i.Severity}] {i.Type}: {i.Description}"));
+
+                    if (report.Issues.Count > 10)
+                        message += $"\n\n... and {report.Issues.Count - 10} more issues";
+                }
+
+                MessageBox.Show(message, "Security Analysis",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during security analysis: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void AnalyzeSession_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+
+                var highRiskCount = reports.Count(r => r.RiskLevel == "High");
+                var mediumRiskCount = reports.Count(r => r.RiskLevel == "Medium");
+                var lowRiskCount = reports.Count(r => r.RiskLevel == "Low");
+                var totalIssues = reports.Sum(r => r.TotalIssues);
+
+                var message = $"Session Security Analysis\n\n" +
+                            $"Total Entries: {entries.Count}\n" +
+                            $"Total Issues: {totalIssues}\n\n" +
+                            $"Risk Distribution:\n" +
+                            $"  High Risk: {highRiskCount}\n" +
+                            $"  Medium Risk: {mediumRiskCount}\n" +
+                            $"  Low Risk: {lowRiskCount}\n\n" +
+                            $"Would you like to export a detailed security report?";
+
+                var result = MessageBox.Show(message, "Session Security Analysis",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    var htmlReport = _exportService.ExportSecurityReport(reports);
+                    var saveDialog = new SaveFileDialog
+                    {
+                        Filter = "HTML Files (*.html)|*.html",
+                        FileName = $"SecurityReport_{DateTime.Now:yyyyMMdd_HHmmss}.html"
+                    };
+
+                    if (saveDialog.ShowDialog() == true)
+                    {
+                        File.WriteAllText(saveDialog.FileName, htmlReport);
+                        MessageBox.Show("Security report saved successfully!", "Export Complete",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error analyzing session: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SecurityHeaders_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select an entry to analyze headers.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var report = _securityAnalyzerService.AnalyzeEntry(selectedEntry);
+                var headersAnalysis = report.SecurityHeaders;
+
+                if (headersAnalysis != null)
+                {
+                    var message = $"Security Headers Analysis\n\n" +
+                                $"HSTS: {(headersAnalysis.HasHSTS ? "✓" : "✗")}\n" +
+                                $"CSP: {(headersAnalysis.HasCSP ? "✓" : "✗")}\n" +
+                                $"X-Frame-Options: {(headersAnalysis.HasXFrameOptions ? "✓" : "✗")}\n" +
+                                $"X-Content-Type-Options: {(headersAnalysis.HasXContentTypeOptions ? "✓" : "✗")}\n" +
+                                $"Referrer-Policy: {(headersAnalysis.HasReferrerPolicy ? "✓" : "✗")}\n\n";
+
+                    if (headersAnalysis.MissingHeaders.Any())
+                    {
+                        message += "Missing Headers:\n" +
+                                 string.Join("\n", headersAnalysis.MissingHeaders.Select(h => $"  - {h}"));
+                    }
+
+                    MessageBox.Show(message, "Security Headers Analysis",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("No response headers available for analysis.", "Security Headers",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error analyzing security headers: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FindVulnerabilities_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+
+                var allIssues = reports.SelectMany(r => r.Issues)
+                    .Where(i => i.Severity == "High" || i.Severity == "Medium")
+                    .GroupBy(i => i.Type)
+                    .OrderByDescending(g => g.Count())
+                    .ToList();
+
+                if (allIssues.Any())
+                {
+                    var message = $"Found {allIssues.Sum(g => g.Count())} potential vulnerabilities:\n\n" +
+                                string.Join("\n", allIssues.Take(10).Select(g =>
+                                    $"{g.Key}: {g.Count()} occurrences"));
+
+                    if (allIssues.Count > 10)
+                        message += $"\n\n... and {allIssues.Count - 10} more vulnerability types";
+
+                    MessageBox.Show(message, "Find Vulnerabilities",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    MessageBox.Show("No high or medium severity vulnerabilities found.", "Find Vulnerabilities",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error finding vulnerabilities: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DetectInjections_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+
+                var injectionIssues = reports.SelectMany(r => r.Issues)
+                    .Where(i => i.Type.Contains("Injection"))
+                    .ToList();
+
+                if (injectionIssues.Any())
+                {
+                    var byType = injectionIssues.GroupBy(i => i.Type).OrderByDescending(g => g.Count());
+
+                    var message = $"Found {injectionIssues.Count} potential injection points:\n\n" +
+                                string.Join("\n", byType.Select(g =>
+                                    $"{g.Key}: {g.Count()} occurrences"));
+
+                    MessageBox.Show(message, "Detect Injections",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    MessageBox.Show("No potential injection points detected.", "Detect Injections",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error detecting injections: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FindSensitiveData_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+
+                var allSensitiveData = reports.SelectMany(r => r.SensitiveDataFound).ToList();
+
+                if (allSensitiveData.Any())
+                {
+                    var byType = allSensitiveData.GroupBy(d => d.Type).OrderByDescending(g => g.Count());
+
+                    var message = $"Found {allSensitiveData.Count} sensitive data exposures:\n\n" +
+                                string.Join("\n", byType.Select(g =>
+                                    $"{g.Key}: {g.Count()} occurrences"));
+
+                    MessageBox.Show(message, "Find Sensitive Data",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    MessageBox.Show("No sensitive data found.", "Find Sensitive Data",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error finding sensitive data: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void GenerateSecurityReport_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                if (!entries.Any())
+                {
+                    MessageBox.Show("No entries to analyze.", "No Data",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+                var htmlReport = _exportService.ExportSecurityReport(reports);
+
+                var saveDialog = new SaveFileDialog
+                {
+                    Filter = "HTML Files (*.html)|*.html",
+                    FileName = $"SecurityReport_{DateTime.Now:yyyyMMdd_HHmmss}.html"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    File.WriteAllText(saveDialog.FileName, htmlReport);
+                    MessageBox.Show("Security report generated and saved successfully!", "Export Complete",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    var openResult = MessageBox.Show("Would you like to open the report?", "Open Report",
+                        MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (openResult == MessageBoxResult.Yes)
+                    {
+                        Process.Start(new ProcessStartInfo(saveDialog.FileName) { UseShellExecute = true });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error generating security report: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Comparison Tool Handlers
+
+        private void CompareEntries_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntries = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedEntries.Count != 2)
+            {
+                MessageBox.Show("Please select exactly 2 entries to compare.", "Invalid Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var comparison = _comparisonService.CompareEntries(selectedEntries[0], selectedEntries[1]);
+
+                var message = $"Entry Comparison\n\n" +
+                            $"Entry 1: {comparison.Entry1Url}\n" +
+                            $"Entry 2: {comparison.Entry2Url}\n\n" +
+                            $"Overall Similarity: {comparison.OverallSimilarity:F2}%\n\n" +
+                            $"Method: {(comparison.MethodMatches ? "✓" : "✗")}\n" +
+                            $"Host: {(comparison.HostMatches ? "✓" : "✗")}\n" +
+                            $"Path: {(comparison.PathMatches ? "✓" : "✗")}\n" +
+                            $"Status: {(comparison.StatusMatches ? "✓" : "✗")}\n\n" +
+                            $"Request Similarity: {comparison.RequestComparison.SimilarityPercentage:F2}%\n" +
+                            $"Response Similarity: {comparison.ResponseComparison.SimilarityPercentage:F2}%";
+
+                MessageBox.Show(message, "Compare Entries",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error comparing entries: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CompareRequests_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntries = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedEntries.Count != 2)
+            {
+                MessageBox.Show("Please select exactly 2 entries to compare requests.", "Invalid Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var request1 = selectedEntries[0].RawRequest ?? "";
+                var request2 = selectedEntries[1].RawRequest ?? "";
+                var comparison = _comparisonService.CompareText(request1, request2);
+
+                var diffReport = _comparisonService.GenerateDiffReport(comparison);
+
+                MessageBox.Show(diffReport, "Compare Requests",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error comparing requests: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CompareResponses_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntries = TrafficDataGrid.SelectedItems.Cast<TrafficEntry>().ToList();
+            if (selectedEntries.Count != 2)
+            {
+                MessageBox.Show("Please select exactly 2 entries to compare responses.", "Invalid Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var response1 = selectedEntries[0].RawResponse ?? "";
+                var response2 = selectedEntries[1].RawResponse ?? "";
+                var comparison = _comparisonService.CompareText(response1, response2);
+
+                var diffReport = _comparisonService.GenerateDiffReport(comparison);
+
+                MessageBox.Show(diffReport, "Compare Responses",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error comparing responses: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CompareSessions_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("To compare sessions, please:\n" +
+                          "1. Tag entries from first session with 'session1'\n" +
+                          "2. Tag entries from second session with 'session2'\n" +
+                          "3. Click this button again",
+                          "Compare Sessions", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            // For now, compare all vs filtered if they're different
+            if (_trafficEntries.Count != _filteredTrafficEntries.Count)
+            {
+                try
+                {
+                    var comparison = _comparisonService.CompareSessions(
+                        _trafficEntries.ToList(),
+                        _filteredTrafficEntries.ToList());
+
+                    var message = $"Session Comparison\n\n" +
+                                $"Session 1 Entries: {comparison.Session1Count}\n" +
+                                $"Session 2 Entries: {comparison.Session2Count}\n\n" +
+                                $"Common URLs: {comparison.CommonUrls.Count}\n" +
+                                $"Unique to Session 1: {comparison.UniqueToSession1.Count}\n" +
+                                $"Unique to Session 2: {comparison.UniqueToSession2.Count}";
+
+                    MessageBox.Show(message, "Compare Sessions",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error comparing sessions: {ex.Message}", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Export Handlers
+
+        private void ExportHAR_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("HAR", "*.har", _exportService.ExportToHAR);
+        }
+
+        private void ExportJSON_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("JSON", "*.json", _exportService.ExportToJSON);
+        }
+
+        private void ExportCSV_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("CSV", "*.csv", _exportService.ExportToCSV);
+        }
+
+        private void ExportXML_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("XML", "*.xml", _exportService.ExportToXML);
+        }
+
+        private void ExportMarkdown_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("Markdown", "*.md", _exportService.ExportToMarkdown);
+        }
+
+        private void ExportBurp_Click(object sender, RoutedEventArgs e)
+        {
+            ExportToFormat("Burp", "*.xml", _exportService.ExportToBurp);
+        }
+
+        private void ExportSecurityHTML_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                if (!entries.Any())
+                {
+                    MessageBox.Show("No entries to export.", "No Data",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var reports = entries.Select(entry => _securityAnalyzerService.AnalyzeEntry(entry)).ToList();
+                var htmlReport = _exportService.ExportSecurityReport(reports);
+
+                var saveDialog = new SaveFileDialog
+                {
+                    Filter = "HTML Files (*.html)|*.html",
+                    FileName = $"SecurityReport_{DateTime.Now:yyyyMMdd_HHmmss}.html"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    File.WriteAllText(saveDialog.FileName, htmlReport);
+                    MessageBox.Show($"Exported {entries.Count} entries to security report successfully!", "Export Complete",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting security report: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportToFormat(string formatName, string extension, Func<List<TrafficEntry>, string> exportFunc)
+        {
+            try
+            {
+                var entries = _filteredTrafficEntries.ToList();
+                if (!entries.Any())
+                {
+                    MessageBox.Show("No entries to export.", "No Data",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var saveDialog = new SaveFileDialog
+                {
+                    Filter = $"{formatName} Files ({extension})|{extension}",
+                    FileName = $"Traffic_{DateTime.Now:yyyyMMdd_HHmmss}{extension.Replace("*", "")}"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    var content = exportFunc(entries);
+                    File.WriteAllText(saveDialog.FileName, content);
+                    MessageBox.Show($"Exported {entries.Count} entries to {formatName} successfully!", "Export Complete",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting to {formatName}: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         #endregion
