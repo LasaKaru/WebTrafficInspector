@@ -596,6 +596,11 @@ namespace WebTrafficInspector
         private AutoResponderService _autoResponderService;
         private MacroRecorderService _macroRecorderService;
         private AutoAttackModeService _autoAttackService;
+        private WebSocketInterceptorService _webSocketService;
+        private GraphQLAnalyzerService _graphQLService;
+        private IntruderService _intruderService;
+        private JWTManipulationService _jwtService;
+        private AdvancedReportGeneratorService _advancedReportService;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -704,6 +709,11 @@ namespace WebTrafficInspector
             _autoResponderService = new AutoResponderService();
             _macroRecorderService = new MacroRecorderService();
             _autoAttackService = new AutoAttackModeService();
+            _webSocketService = new WebSocketInterceptorService();
+            _graphQLService = new GraphQLAnalyzerService();
+            _intruderService = new IntruderService();
+            _jwtService = new JWTManipulationService();
+            _advancedReportService = new AdvancedReportGeneratorService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
@@ -3707,6 +3717,174 @@ namespace WebTrafficInspector
             catch (Exception ex)
             {
                 MessageBox.Show($"Error viewing configuration: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region GraphQL Analyzer Handlers
+
+        private void AnalyzeGraphQL_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedEntry = TrafficDataGrid.SelectedItem as TrafficEntry;
+            if (selectedEntry == null)
+            {
+                MessageBox.Show("Please select a traffic entry to analyze.", "No Selection",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                if (!_graphQLService.IsGraphQLRequest(selectedEntry))
+                {
+                    MessageBox.Show("Selected entry does not appear to be a GraphQL request.", "Not GraphQL",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var analysis = _graphQLService.AnalyzeEntry(selectedEntry);
+                var report = _graphQLService.GenerateReport(analysis);
+
+                MessageBox.Show(report, "GraphQL Analysis Report",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error analyzing GraphQL: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region JWT Manipulation Handlers
+
+        private void AnalyzeJWT_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string token = Microsoft.VisualBasic.Interaction.InputBox(
+                    "Enter JWT token to analyze:",
+                    "JWT Analyzer",
+                    "",
+                    -1, -1);
+
+                if (string.IsNullOrWhiteSpace(token)) return;
+
+                if (!_jwtService.IsJWT(token.Trim()))
+                {
+                    MessageBox.Show("Invalid JWT format.", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var analysis = _jwtService.AnalyzeToken(token.Trim());
+                var report = _jwtService.GenerateReport(analysis);
+
+                MessageBox.Show(report, "JWT Analysis Report",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error analyzing JWT: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void GenerateJWTAttacks_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string token = Microsoft.VisualBasic.Interaction.InputBox(
+                    "Enter JWT token to generate attack variants:",
+                    "JWT Attack Generator",
+                    "",
+                    -1, -1);
+
+                if (string.IsNullOrWhiteSpace(token)) return;
+
+                var variants = _jwtService.GenerateAttackVariants(token.Trim());
+
+                var report = new System.Text.StringBuilder();
+                report.AppendLine("JWT Attack Variants Generated:");
+                report.AppendLine(new string('=', 60));
+                report.AppendLine();
+
+                foreach (var variant in variants)
+                {
+                    report.AppendLine($"[{variant.AttackType}] {variant.Name}");
+                    report.AppendLine($"Description: {variant.Description}");
+                    report.AppendLine($"Token: {variant.Token}");
+                    report.AppendLine();
+                }
+
+                MessageBox.Show(report.ToString(), "JWT Attack Variants",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error generating JWT attacks: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Intruder/Fuzzer Handlers
+
+        private void LaunchIntruder_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Intruder/Fuzzer interface: Comprehensive parameter fuzzing with 4 attack modes:\n\n" +
+                "• Sniper: One payload set, one position at a time\n" +
+                "• Battering Ram: Same payload in all positions\n" +
+                "• Pitchfork: Multiple payload sets in parallel\n" +
+                "• Cluster Bomb: All combinations\n\n" +
+                "Includes payloads for: SQL Injection, XSS, Path Traversal, Command Injection, LDAP, XXE, NoSQL, SSRF, and more.",
+                "Intruder/Fuzzer", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Advanced Report Handlers
+
+        private void GenerateHTMLReport_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "HTML files (*.html)|*.html|All files (*.*)|*.*",
+                    FileName = $"Security_Report_{DateTime.Now:yyyyMMdd_HHmmss}.html",
+                    DefaultExt = ".html"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    var html = _advancedReportService.GenerateSecurityReport(_trafficEntries.ToList());
+                    _advancedReportService.SaveReportToFile(html, saveDialog.FileName);
+
+                    MessageBox.Show($"HTML report generated successfully:\n{saveDialog.FileName}",
+                        "Report Generated", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // Ask if user wants to open it
+                    var result = MessageBox.Show("Would you like to open the report now?", "Open Report",
+                        MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = saveDialog.FileName,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error generating HTML report: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

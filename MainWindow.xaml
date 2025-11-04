@@ -260,6 +260,25 @@
                     <MenuItem Header="Hash Calculator..." Click="HashCalculator_Click"/>
                     <MenuItem Header="Auto-Decode..." Click="AutoDecode_Click"/>
                 </MenuItem>
+                <MenuItem Header="_JWT Tools">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔑" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Analyze JWT..." Click="AnalyzeJWT_Click"/>
+                    <MenuItem Header="Generate Attack Variants..." Click="GenerateJWTAttacks_Click"/>
+                </MenuItem>
+                <MenuItem Header="_GraphQL Tools">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📊" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Analyze GraphQL Request..." Click="AnalyzeGraphQL_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Intruder/Fuzzer">
+                    <MenuItem.Icon>
+                        <TextBlock Text="💥" FontSize="14"/>
+                    </MenuItem.Icon>
+                    <MenuItem Header="Launch Intruder..." Click="LaunchIntruder_Click"/>
+                </MenuItem>
                 <MenuItem Header="_Pattern Matcher">
                     <MenuItem.Icon>
                         <TextBlock Text="🎯" FontSize="14"/>
@@ -338,6 +357,8 @@
                     <MenuItem Header="Export to CSV..." Click="ExportCSV_Click"/>
                     <MenuItem Header="Export to XML..." Click="ExportXML_Click"/>
                     <MenuItem Header="Export to Markdown..." Click="ExportMarkdown_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Generate HTML Security Report..." Click="GenerateHTMLReport_Click"/>
                     <MenuItem Header="Export to Burp Format..." Click="ExportBurp_Click"/>
                     <MenuItem Header="Export Security Report (HTML)..." Click="ExportSecurityHTML_Click"/>
                 </MenuItem>
