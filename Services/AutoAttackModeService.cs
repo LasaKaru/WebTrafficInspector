@@ -20,6 +20,8 @@ namespace WebTrafficInspector.Services
         private IDORScannerService _idorScanner;
         private PathTraversalScannerService _pathTraversalScanner;
         private AuthBypassScannerService _authBypassScanner;
+        private OAuthOIDCVulnerabilityScannerService _oauthScanner;
+        private PrivilegeEscalationScannerService _privEscScanner;
 
         private List<AttackResult> _allResults = new List<AttackResult>();
         private Dictionary<string, List<AttackResult>> _resultsByUrl = new Dictionary<string, List<AttackResult>>();
@@ -70,6 +72,8 @@ namespace WebTrafficInspector.Services
             _idorScanner = new IDORScannerService();
             _pathTraversalScanner = new PathTraversalScannerService();
             _authBypassScanner = new AuthBypassScannerService();
+            _oauthScanner = new OAuthOIDCVulnerabilityScannerService();
+            _privEscScanner = new PrivilegeEscalationScannerService();
 
             // Default excluded extensions (static assets)
             _excludedExtensions = new List<string>
@@ -189,6 +193,16 @@ namespace WebTrafficInspector.Services
                 if (Options.EnableAuthBypassScanning)
                 {
                     tasks.Add(RunAuthBypassAttack(entry));
+                }
+
+                if (Options.EnableOAuthScanning)
+                {
+                    tasks.Add(RunOAuthAttack(entry));
+                }
+
+                if (Options.EnablePrivilegeEscalationScanning)
+                {
+                    tasks.Add(RunPrivilegeEscalationAttack(entry));
                 }
 
                 // Wait for all attacks to complete
@@ -510,6 +524,137 @@ namespace WebTrafficInspector.Services
             }
         }
 
+        private async Task<AttackResult> RunOAuthAttack(TrafficEntry entry)
+        {
+            try
+            {
+                OnAttackProgress(new AttackProgressEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "OAuth/OIDC",
+                    Status = "Scanning...",
+                    Progress = 0
+                });
+
+                // First detect if OAuth flow exists
+                var oauthFlow = _oauthScanner.DetectOAuthFlow(entry);
+
+                if (oauthFlow == null)
+                {
+                    return new AttackResult
+                    {
+                        AttackType = "OAuth/OIDC",
+                        TargetUrl = entry.Url,
+                        Status = "No OAuth flow detected",
+                        VulnerabilitiesFound = 0,
+                        TotalTests = 0,
+                        Duration = 0,
+                        Timestamp = DateTime.Now
+                    };
+                }
+
+                var scanOptions = new OAuthScanOptions
+                {
+                    PerformActiveAttacks = true,
+                    StopOnFirstVulnerability = false,
+                    DelayBetweenRequests = Options.DelayBetweenRequests
+                };
+
+                var scanReport = await _oauthScanner.ScanOAuthFlow(oauthFlow.FlowId, scanOptions);
+
+                var result = new AttackResult
+                {
+                    AttackType = "OAuth/OIDC",
+                    TargetUrl = entry.Url,
+                    Status = scanReport.Status,
+                    VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
+                    TotalTests = scanReport.TotalTests,
+                    Duration = scanReport.Duration,
+                    Details = scanReport,
+                    Timestamp = DateTime.Now
+                };
+
+                OnAttackCompleted(new AttackResultEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "OAuth/OIDC",
+                    Status = result.Status,
+                    VulnerabilitiesFound = result.VulnerabilitiesFound
+                });
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new AttackResult
+                {
+                    AttackType = "OAuth/OIDC",
+                    TargetUrl = entry.Url,
+                    Status = $"Error: {ex.Message}",
+                    VulnerabilitiesFound = 0,
+                    TotalTests = 0,
+                    Timestamp = DateTime.Now
+                };
+            }
+        }
+
+        private async Task<AttackResult> RunPrivilegeEscalationAttack(TrafficEntry entry)
+        {
+            try
+            {
+                OnAttackProgress(new AttackProgressEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Privilege Escalation",
+                    Status = "Scanning...",
+                    Progress = 0
+                });
+
+                var scanOptions = new PrivEscOptions
+                {
+                    StopOnFirstVulnerability = false,
+                    DelayBetweenRequests = Options.DelayBetweenRequests,
+                    TestAllTechniques = true
+                };
+
+                var scanReport = await _privEscScanner.ScanForPrivilegeEscalation(entry.Url, scanOptions);
+
+                var result = new AttackResult
+                {
+                    AttackType = "Privilege Escalation",
+                    TargetUrl = entry.Url,
+                    Status = scanReport.Status,
+                    VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
+                    TotalTests = scanReport.TotalTests,
+                    Duration = scanReport.Duration,
+                    Details = scanReport,
+                    Timestamp = DateTime.Now
+                };
+
+                OnAttackCompleted(new AttackResultEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Privilege Escalation",
+                    Status = result.Status,
+                    VulnerabilitiesFound = result.VulnerabilitiesFound
+                });
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new AttackResult
+                {
+                    AttackType = "Privilege Escalation",
+                    TargetUrl = entry.Url,
+                    Status = $"Error: {ex.Message}",
+                    VulnerabilitiesFound = 0,
+                    TotalTests = 0,
+                    Timestamp = DateTime.Now
+                };
+            }
+        }
+
         public bool ShouldAttackUrl(string url)
         {
             if (string.IsNullOrEmpty(url)) return false;
@@ -744,6 +889,8 @@ namespace WebTrafficInspector.Services
         public bool EnableIDORScanning { get; set; } = true;
         public bool EnablePathTraversalScanning { get; set; } = true;
         public bool EnableAuthBypassScanning { get; set; } = true;
+        public bool EnableOAuthScanning { get; set; } = true;
+        public bool EnablePrivilegeEscalationScanning { get; set; } = true;
         public bool TestHeaders { get; set; } = true;
         public bool TestCookies { get; set; } = true;
         public bool UseRandomUserAgents { get; set; } = true;

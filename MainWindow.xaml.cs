@@ -601,6 +601,8 @@ namespace WebTrafficInspector
         private IntruderService _intruderService;
         private JWTManipulationService _jwtService;
         private AdvancedReportGeneratorService _advancedReportService;
+        private OAuthOIDCVulnerabilityScannerService _oauthScanner;
+        private PrivilegeEscalationScannerService _privEscScanner;
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
         private bool _isProxyStarted = false;
@@ -714,8 +716,14 @@ namespace WebTrafficInspector
             _intruderService = new IntruderService();
             _jwtService = new JWTManipulationService();
             _advancedReportService = new AdvancedReportGeneratorService();
+            _oauthScanner = new OAuthOIDCVulnerabilityScannerService();
+            _privEscScanner = new PrivilegeEscalationScannerService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
+
+            // Setup OAuth/OIDC detection events
+            _oauthScanner.OAuthFlowDetected += OnOAuthFlowDetected;
+            _oauthScanner.VulnerabilityFound += OnOAuthVulnerabilityFound;
 
             await StartProxyAsync();
             await InitializeWebViewAsync();
@@ -801,6 +809,22 @@ namespace WebTrafficInspector
                 if (_filteredTrafficEntries.Count > 0)
                 {
                     TrafficDataGrid.ScrollIntoView(_filteredTrafficEntries[_filteredTrafficEntries.Count - 1]);
+                }
+
+                // Automatically detect OAuth/OIDC flows
+                if (_oauthScanner != null)
+                {
+                    _ = Task.Run(() =>
+                    {
+                        var oauthFlow = _oauthScanner.DetectOAuthFlow(entry);
+                        if (oauthFlow != null)
+                        {
+                            Dispatcher.BeginInvoke(() =>
+                            {
+                                StatusText.Text = $"OAuth flow detected: {oauthFlow.FlowType}";
+                            });
+                        }
+                    });
                 }
 
                 // Process through Auto Attack Mode if enabled
@@ -4117,6 +4141,55 @@ namespace WebTrafficInspector
             catch (Exception ex)
             {
                 MessageBox.Show($"Error exporting to {formatName}: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region OAuth/OIDC and Privilege Escalation Detection
+
+        private void OnOAuthFlowDetected(object sender, OAuthDetectedEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                StatusText.Text = $"OAuth {e.FlowData.FlowType} flow detected from {e.FlowData.Host}";
+
+                // Show notification to user
+                if (MessageBox.Show(
+                    $"OAuth/OIDC flow detected!\n\n" +
+                    $"Type: {e.FlowData.FlowType}\n" +
+                    $"Host: {e.FlowData.Host}\n" +
+                    $"Flow ID: {e.FlowData.FlowId}\n\n" +
+                    $"Would you like to view and attack this OAuth flow?",
+                    "OAuth Flow Detected",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information) == MessageBoxResult.Yes)
+                {
+                    ShowOAuthDetectionWindow();
+                }
+            });
+        }
+
+        private void OnOAuthVulnerabilityFound(object sender, VulnerabilityFoundEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                StatusText.Text = $"OAuth vulnerability found: {e.Vulnerability.Type} ({e.Vulnerability.Severity})";
+            });
+        }
+
+        private void ShowOAuthDetectionWindow()
+        {
+            try
+            {
+                var detectionWindow = new OAuthDetectionWindow(_oauthScanner, _privEscScanner);
+                detectionWindow.Owner = this;
+                detectionWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening OAuth detection window: {ex.Message}", "Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
