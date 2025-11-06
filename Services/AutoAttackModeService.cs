@@ -18,9 +18,15 @@ namespace WebTrafficInspector.Services
         private XSSScannerService _xssScanner;
         private SQLInjectionScannerService _sqlScanner;
         private IDORScannerService _idorScanner;
+        private PathTraversalScannerService _pathTraversalScanner;
+        private AuthBypassScannerService _authBypassScanner;
 
         private List<AttackResult> _allResults = new List<AttackResult>();
         private Dictionary<string, List<AttackResult>> _resultsByUrl = new Dictionary<string, List<AttackResult>>();
+
+        private int _activeScans = 0;
+        private readonly object _scanLock = new object();
+        private const int MAX_CONCURRENT_SCANS = 3; // Limit concurrent scans to prevent slowdown
 
         public event EventHandler<AttackResultEventArgs> AttackStarted;
         public event EventHandler<AttackResultEventArgs> AttackCompleted;
@@ -62,6 +68,8 @@ namespace WebTrafficInspector.Services
             _xssScanner = new XSSScannerService();
             _sqlScanner = new SQLInjectionScannerService();
             _idorScanner = new IDORScannerService();
+            _pathTraversalScanner = new PathTraversalScannerService();
+            _authBypassScanner = new AuthBypassScannerService();
 
             // Default excluded extensions (static assets)
             _excludedExtensions = new List<string>
@@ -107,10 +115,31 @@ namespace WebTrafficInspector.Services
                 return false;
             }
 
-            // Start attack in background
+            // Throttle concurrent scans to prevent system slowdown
+            lock (_scanLock)
+            {
+                if (_activeScans >= MAX_CONCURRENT_SCANS)
+                {
+                    // Queue is full, skip this entry to prevent slowdown
+                    return false;
+                }
+                _activeScans++;
+            }
+
+            // Start attack in background with proper cleanup
             _ = Task.Run(async () =>
             {
-                await AttackUrl(entry);
+                try
+                {
+                    await AttackUrl(entry);
+                }
+                finally
+                {
+                    lock (_scanLock)
+                    {
+                        _activeScans--;
+                    }
+                }
             });
 
             return true;
@@ -150,6 +179,16 @@ namespace WebTrafficInspector.Services
                 if (Options.EnableIDORScanning)
                 {
                     tasks.Add(RunIDORAttack(entry));
+                }
+
+                if (Options.EnablePathTraversalScanning)
+                {
+                    tasks.Add(RunPathTraversalAttack(entry));
+                }
+
+                if (Options.EnableAuthBypassScanning)
+                {
+                    tasks.Add(RunAuthBypassAttack(entry));
                 }
 
                 // Wait for all attacks to complete
@@ -348,6 +387,120 @@ namespace WebTrafficInspector.Services
                 return new AttackResult
                 {
                     AttackType = "IDOR",
+                    TargetUrl = entry.Url,
+                    Status = $"Error: {ex.Message}",
+                    VulnerabilitiesFound = 0,
+                    TotalTests = 0,
+                    Timestamp = DateTime.Now
+                };
+            }
+        }
+
+        private async Task<AttackResult> RunPathTraversalAttack(TrafficEntry entry)
+        {
+            try
+            {
+                OnAttackProgress(new AttackProgressEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Path Traversal",
+                    Status = "Scanning...",
+                    Progress = 0
+                });
+
+                var scanOptions = new PathTraversalOptions
+                {
+                    StopOnFirstVulnerability = false,
+                    DelayBetweenRequests = Options.DelayBetweenRequests,
+                    MaxFilesToTest = 10
+                };
+
+                var scanReport = await _pathTraversalScanner.ScanTrafficEntry(entry, scanOptions);
+
+                var result = new AttackResult
+                {
+                    AttackType = "Path Traversal",
+                    TargetUrl = entry.Url,
+                    Status = scanReport.Status,
+                    VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
+                    TotalTests = scanReport.TotalTests,
+                    Duration = scanReport.Duration,
+                    Details = scanReport,
+                    Timestamp = DateTime.Now
+                };
+
+                OnAttackCompleted(new AttackResultEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Path Traversal",
+                    Status = result.Status,
+                    VulnerabilitiesFound = result.VulnerabilitiesFound
+                });
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new AttackResult
+                {
+                    AttackType = "Path Traversal",
+                    TargetUrl = entry.Url,
+                    Status = $"Error: {ex.Message}",
+                    VulnerabilitiesFound = 0,
+                    TotalTests = 0,
+                    Timestamp = DateTime.Now
+                };
+            }
+        }
+
+        private async Task<AttackResult> RunAuthBypassAttack(TrafficEntry entry)
+        {
+            try
+            {
+                OnAttackProgress(new AttackProgressEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Auth Bypass",
+                    Status = "Scanning...",
+                    Progress = 0
+                });
+
+                var scanOptions = new AuthBypassOptions
+                {
+                    StopOnFirstVulnerability = false,
+                    DelayBetweenRequests = Options.DelayBetweenRequests,
+                    UseRandomUserAgents = Options.UseRandomUserAgents
+                };
+
+                var scanReport = await _authBypassScanner.ScanUrl(entry.Url, scanOptions);
+
+                var result = new AttackResult
+                {
+                    AttackType = "Auth Bypass",
+                    TargetUrl = entry.Url,
+                    Status = scanReport.Status,
+                    VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
+                    TotalTests = 0,
+                    Duration = scanReport.Duration,
+                    Details = scanReport,
+                    Timestamp = DateTime.Now
+                };
+
+                OnAttackCompleted(new AttackResultEventArgs
+                {
+                    Url = entry.Url,
+                    AttackType = "Auth Bypass",
+                    Status = result.Status,
+                    VulnerabilitiesFound = result.VulnerabilitiesFound
+                });
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return new AttackResult
+                {
+                    AttackType = "Auth Bypass",
                     TargetUrl = entry.Url,
                     Status = $"Error: {ex.Message}",
                     VulnerabilitiesFound = 0,
@@ -589,8 +742,11 @@ namespace WebTrafficInspector.Services
         public bool EnableXSSScanning { get; set; } = true;
         public bool EnableSQLInjectionScanning { get; set; } = true;
         public bool EnableIDORScanning { get; set; } = true;
+        public bool EnablePathTraversalScanning { get; set; } = true;
+        public bool EnableAuthBypassScanning { get; set; } = true;
         public bool TestHeaders { get; set; } = true;
         public bool TestCookies { get; set; } = true;
+        public bool UseRandomUserAgents { get; set; } = true;
         public int DelayBetweenRequests { get; set; } = 100;
     }
 
