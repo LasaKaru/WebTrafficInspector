@@ -60,15 +60,16 @@ namespace WebTrafficInspector
             _flows.Clear();
 
             var detectedFlows = _oauthScanner.GetDetectedFlows();
-            foreach (var flow in detectedFlows)
+            foreach (var kvp in detectedFlows)
             {
+                var flow = kvp.Value;
                 _flows.Add(new OAuthFlowDisplayModel
                 {
                     FlowId = flow.FlowId,
                     FlowType = flow.FlowType,
                     Host = flow.Host,
-                    AttackStatus = _scanResults.ContainsKey(flow.FlowId) ?
-                        (_scanResults[flow.FlowId].VulnerabilitiesFound > 0 ? "Vulnerable" : "Attacked") :
+                    AttackStatus = _scanResults.ContainsKey(kvp.Key) ?
+                        (_scanResults[kvp.Key].VulnerabilitiesFound > 0 ? "Vulnerable" : "Attacked") :
                         "Not Attacked",
                     FlowData = flow
                 });
@@ -139,7 +140,6 @@ namespace WebTrafficInspector
                 var scanOptions = new OAuthScanOptions
                 {
                     PerformActiveAttacks = true,
-                    StopOnFirstVulnerability = false,
                     DelayBetweenRequests = 100
                 };
 

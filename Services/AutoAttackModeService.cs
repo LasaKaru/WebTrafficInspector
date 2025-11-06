@@ -556,7 +556,6 @@ namespace WebTrafficInspector.Services
                 var scanOptions = new OAuthScanOptions
                 {
                     PerformActiveAttacks = true,
-                    StopOnFirstVulnerability = false,
                     DelayBetweenRequests = Options.DelayBetweenRequests
                 };
 
@@ -568,7 +567,7 @@ namespace WebTrafficInspector.Services
                     TargetUrl = entry.Url,
                     Status = scanReport.Status,
                     VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
-                    TotalTests = scanReport.TotalTests,
+                    TotalTests = scanReport.AttackResults?.Count ?? 0,
                     Duration = scanReport.Duration,
                     Details = scanReport,
                     Timestamp = DateTime.Now
@@ -612,9 +611,8 @@ namespace WebTrafficInspector.Services
 
                 var scanOptions = new PrivEscOptions
                 {
-                    StopOnFirstVulnerability = false,
                     DelayBetweenRequests = Options.DelayBetweenRequests,
-                    TestAllTechniques = true
+                    TestActiveExploits = true
                 };
 
                 var scanReport = await _privEscScanner.ScanForPrivilegeEscalation(entry.Url, scanOptions);
@@ -625,7 +623,7 @@ namespace WebTrafficInspector.Services
                     TargetUrl = entry.Url,
                     Status = scanReport.Status,
                     VulnerabilitiesFound = scanReport.VulnerabilitiesFound,
-                    TotalTests = scanReport.TotalTests,
+                    TotalTests = scanReport.TestResults?.Count ?? 0,
                     Duration = scanReport.Duration,
                     Details = scanReport,
                     Timestamp = DateTime.Now
