@@ -317,6 +317,13 @@
                         <MenuItem Header="Load XSS Payloads..." Click="LoadXSSPayloads_Click"/>
                         <MenuItem Header="Configure..." Click="ConfigureAutoAttack_Click"/>
                     </MenuItem>
+                    <MenuItem Header="OAuth/OIDC Detection">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🔐" FontSize="14"/>
+                        </MenuItem.Icon>
+                        <MenuItem Header="Show OAuth Detection Window..." Click="ShowOAuthDetectionWindow_Click"/>
+                        <MenuItem Header="Toggle Popup Notifications" Click="ToggleOAuthNotifications_Click"/>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem Header="_Comparison Tool">
                     <MenuItem.Icon>
