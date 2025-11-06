@@ -258,7 +258,7 @@ namespace WebTrafficInspector.Services
 
                 var scanOptions = new SQLIScanOptions
                 {
-                    TestAllTypes = true,
+                    StopOnFirstVulnerability = false,
                     DelayBetweenRequests = Options.DelayBetweenRequests
                 };
 

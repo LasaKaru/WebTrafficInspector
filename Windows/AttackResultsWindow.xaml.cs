@@ -233,16 +233,16 @@ namespace WebTrafficInspector.Windows
         {
             var sb = new System.Text.StringBuilder();
 
-            if (report.Vulnerabilities != null && report.Vulnerabilities.Any())
+            if (report.Results != null && report.Results.Any())
             {
-                foreach (var vuln in report.Vulnerabilities)
+                foreach (var vuln in report.Results)
                 {
-                    sb.AppendLine($"Parameter: {vuln.Parameter}");
-                    sb.AppendLine($"Location: {vuln.Location}");
+                    sb.AppendLine($"Parameter: {vuln.InjectionPoint}");
+                    sb.AppendLine($"Location: {vuln.InjectionPoint}");
                     sb.AppendLine($"Payload: {vuln.Payload}");
-                    sb.AppendLine($"Type: {vuln.Type}");
+                    sb.AppendLine($"Type: XSS");
                     sb.AppendLine($"Severity: {vuln.Severity}");
-                    sb.AppendLine($"Context: {vuln.Context}");
+                    sb.AppendLine($"Context: {vuln.InjectionPoint}");
                     if (!string.IsNullOrEmpty(vuln.Evidence))
                     {
                         sb.AppendLine($"Evidence: {vuln.Evidence.Substring(0, Math.Min(150, vuln.Evidence.Length))}...");
@@ -262,9 +262,9 @@ namespace WebTrafficInspector.Windows
         {
             var sb = new System.Text.StringBuilder();
 
-            if (report.Vulnerabilities != null && report.Vulnerabilities.Any())
+            if (report.Results != null && report.Results.Any())
             {
-                var grouped = report.Vulnerabilities.GroupBy(v => v.InjectionType);
+                var grouped = report.Results.GroupBy(v => v.Type);
                 foreach (var group in grouped)
                 {
                     sb.AppendLine($"Injection Type: {group.Key}");
@@ -272,7 +272,7 @@ namespace WebTrafficInspector.Windows
 
                     foreach (var vuln in group.Take(5))
                     {
-                        sb.AppendLine($"  Parameter: {vuln.Parameter}");
+                        sb.AppendLine($"  Parameter: {vuln.InjectionPoint}");
                         sb.AppendLine($"  Payload: {vuln.Payload}");
                         sb.AppendLine($"  Confidence: {vuln.Confidence}");
                         sb.AppendLine($"  Severity: {vuln.Severity}");

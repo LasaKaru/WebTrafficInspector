@@ -39,11 +39,11 @@ namespace WebTrafficInspector.Services
             }
 
             // Check request body for GraphQL structure
-            if (!string.IsNullOrEmpty(entry.RequestBody))
+            if (!string.IsNullOrEmpty(entry.RawRequest))
             {
                 try
                 {
-                    var json = JsonDocument.Parse(entry.RequestBody);
+                    var json = JsonDocument.Parse(entry.RawRequest);
                     if (json.RootElement.TryGetProperty("query", out _) ||
                         json.RootElement.TryGetProperty("mutation", out _) ||
                         json.RootElement.TryGetProperty("operationName", out _))
@@ -54,9 +54,9 @@ namespace WebTrafficInspector.Services
                 catch { }
 
                 // Check for GraphQL query syntax
-                if (Regex.IsMatch(entry.RequestBody, @"query\s+\w+\s*\{") ||
-                    Regex.IsMatch(entry.RequestBody, @"mutation\s+\w+\s*\{") ||
-                    Regex.IsMatch(entry.RequestBody, @"subscription\s+\w+\s*\{"))
+                if (Regex.IsMatch(entry.RawRequest, @"query\s+\w+\s*\{") ||
+                    Regex.IsMatch(entry.RawRequest, @"mutation\s+\w+\s*\{") ||
+                    Regex.IsMatch(entry.RawRequest, @"subscription\s+\w+\s*\{"))
                 {
                     return true;
                 }
@@ -236,7 +236,7 @@ namespace WebTrafficInspector.Services
             try
             {
                 // Parse the GraphQL query
-                var queryData = ExtractQueryData(entry.RequestBody);
+                var queryData = ExtractQueryData(entry.RawRequest);
                 result.Query = queryData.Query;
                 result.Variables = queryData.Variables;
                 result.OperationName = queryData.OperationName;
@@ -244,11 +244,11 @@ namespace WebTrafficInspector.Services
                 // Check for common security issues
                 CheckIntrospectionEnabled(result, queryData.Query);
                 CheckDepthComplexity(result, queryData.Query);
-                CheckBatchingAbuse(result, entry.RequestBody);
-                CheckSensitiveDataExposure(result, entry.ResponseBody);
+                CheckBatchingAbuse(result, entry.RawRequest);
+                CheckSensitiveDataExposure(result, entry.RawResponse);
                 CheckAuthorizationBypass(result, queryData.Query);
                 CheckInjectionVulnerabilities(result, queryData);
-                CheckFieldSuggestions(result, entry.ResponseBody);
+                CheckFieldSuggestions(result, entry.RawResponse);
                 CheckRateLimiting(result, entry);
             }
             catch (Exception ex)
@@ -483,7 +483,7 @@ namespace WebTrafficInspector.Services
         {
             // This would need to track multiple requests to detect rate limiting
             // For now, just check response headers
-            var headers = entry.ResponseHeaders?.ToLower() ?? "";
+            var headers = ExtractHeaders(entry.RawResponse)?.ToLower() ?? "";
             if (!headers.Contains("x-ratelimit") && !headers.Contains("x-rate-limit"))
             {
                 result.Issues.Add(new GraphQLIssue
@@ -585,6 +585,25 @@ namespace WebTrafficInspector.Services
         private string GenerateFieldEnumerationQuery(string queryName)
         {
             return $@"{{""query"":""{{ {queryName} {{ __typename }} }}""}}";
+        }
+
+        private string ExtractHeaders(string rawResponse)
+        {
+            if (string.IsNullOrEmpty(rawResponse))
+                return string.Empty;
+
+            var lines = rawResponse.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var headerLines = new List<string>();
+
+            // Skip the first line (HTTP status line) and collect headers until we hit an empty line
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (string.IsNullOrEmpty(lines[i]))
+                    break;
+                headerLines.Add(lines[i]);
+            }
+
+            return string.Join("\r\n", headerLines);
         }
 
         public string GenerateReport(GraphQLAnalysisResult analysis)

@@ -373,7 +373,7 @@ namespace WebTrafficInspector.Services
             }
 
             // Check for missing security headers
-            var entriesWithoutHSTS = entries.Count(e => !e.ResponseHeaders?.ToLower().Contains("strict-transport-security") ?? true);
+            var entriesWithoutHSTS = entries.Count(e => !(ExtractHeaders(e.RawResponse)?.ToLower().Contains("strict-transport-security") ?? false));
             if (entriesWithoutHSTS > entries.Count / 2)
             {
                 findings.Add(new SecurityFinding
@@ -562,6 +562,25 @@ namespace WebTrafficInspector.Services
                 len = len / 1024;
             }
             return $"{len:0.##} {sizes[order]}";
+        }
+
+        private string ExtractHeaders(string rawResponse)
+        {
+            if (string.IsNullOrEmpty(rawResponse))
+                return string.Empty;
+
+            var lines = rawResponse.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
+            var headerLines = new List<string>();
+
+            // Skip the first line (HTTP status line) and collect headers until we hit an empty line
+            for (int i = 1; i < lines.Length; i++)
+            {
+                if (string.IsNullOrEmpty(lines[i]))
+                    break;
+                headerLines.Add(lines[i]);
+            }
+
+            return string.Join("\r\n", headerLines);
         }
 
         private string TruncateString(string str, int maxLength)
