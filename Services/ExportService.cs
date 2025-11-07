@@ -456,5 +456,106 @@ namespace WebTrafficInspector.Services
             if (value == null) return "";
             return value.Replace("\"", "\"\"");
         }
+
+        /// <summary>
+        /// Import from JSON format
+        /// </summary>
+        public List<TrafficEntry> ImportFromJson(string json)
+        {
+            try
+            {
+                var export = JsonSerializer.Deserialize<JsonElement>(json);
+                var entries = new List<TrafficEntry>();
+
+                if (export.TryGetProperty("entries", out var entriesElement) && entriesElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var entryElement in entriesElement.EnumerateArray())
+                    {
+                        var entry = new TrafficEntry
+                        {
+                            Id = entryElement.TryGetProperty("id", out var id) ? id.GetInt32() : entries.Count + 1,
+                            Timestamp = entryElement.TryGetProperty("timestamp", out var timestamp) ?
+                                DateTime.Parse(timestamp.GetString()) : DateTime.Now,
+                            Method = entryElement.TryGetProperty("method", out var method) ? method.GetString() : "GET",
+                            Host = entryElement.TryGetProperty("host", out var host) ? host.GetString() : "",
+                            Path = entryElement.TryGetProperty("path", out var path) ? path.GetString() : "/",
+                            Status = entryElement.TryGetProperty("status", out var status) ? status.GetInt32() : 200,
+                            Length = entryElement.TryGetProperty("length", out var length) ? length.GetInt64() : 0,
+                            RawRequest = entryElement.TryGetProperty("rawRequest", out var rawRequest) ? rawRequest.GetString() : "",
+                            RawResponse = entryElement.TryGetProperty("rawResponse", out var rawResponse) ? rawResponse.GetString() : "",
+                            IsPinned = entryElement.TryGetProperty("isPinned", out var isPinned) && isPinned.GetBoolean(),
+                            Tags = entryElement.TryGetProperty("tags", out var tags) ? tags.GetString() : "",
+                            Notes = entryElement.TryGetProperty("notes", out var notes) ? notes.GetString() : "",
+                            Color = entryElement.TryGetProperty("color", out var color) ? color.GetString() : ""
+                        };
+                        entries.Add(entry);
+                    }
+                }
+
+                return entries;
+            }
+            catch
+            {
+                // Return empty list if parsing fails
+                return new List<TrafficEntry>();
+            }
+        }
+
+        /// <summary>
+        /// Import from Burp Suite XML format
+        /// </summary>
+        public List<TrafficEntry> ImportFromBurp(string xml)
+        {
+            try
+            {
+                var doc = XDocument.Parse(xml);
+                var entries = new List<TrafficEntry>();
+                var id = 1;
+
+                foreach (var item in doc.Descendants("item"))
+                {
+                    var entry = new TrafficEntry
+                    {
+                        Id = id++,
+                        Timestamp = DateTime.Now,
+                        Method = item.Element("method")?.Value ?? "GET",
+                        Host = item.Element("host")?.Value ?? "",
+                        Path = item.Element("url")?.Value ?? "/",
+                        Status = int.TryParse(item.Element("status")?.Value, out var status) ? status : 0,
+                        Length = long.TryParse(item.Element("responselength")?.Value, out var length) ? length : 0,
+                        RawRequest = DecodeBase64(item.Element("request")?.Value ?? ""),
+                        RawResponse = DecodeBase64(item.Element("response")?.Value ?? ""),
+                        IsPinned = false,
+                        Tags = "",
+                        Notes = "",
+                        Color = ""
+                    };
+                    entries.Add(entry);
+                }
+
+                return entries;
+            }
+            catch
+            {
+                // Return empty list if parsing fails
+                return new List<TrafficEntry>();
+            }
+        }
+
+        private string DecodeBase64(string base64String)
+        {
+            if (string.IsNullOrEmpty(base64String))
+                return "";
+
+            try
+            {
+                var bytes = Convert.FromBase64String(base64String);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                return base64String; // Return as-is if not valid base64
+            }
+        }
     }
 }

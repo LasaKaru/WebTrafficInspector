@@ -1001,7 +1001,7 @@ namespace WebTrafficInspector
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    var json = _exportService.ExportToJson(_trafficEntries.ToList());
+                    var json = _exportService.ExportToJSON(_trafficEntries.ToList());
                     File.WriteAllText(saveDialog.FileName, json);
                     StatusText.Text = $"Exported {_trafficEntries.Count} entries to JSON";
                     MessageBox.Show($"Successfully exported {_trafficEntries.Count} entries to:\n{saveDialog.FileName}",
@@ -1028,7 +1028,7 @@ namespace WebTrafficInspector
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    var csv = _exportService.ExportToCsv(_trafficEntries.ToList());
+                    var csv = _exportService.ExportToCSV(_trafficEntries.ToList());
                     File.WriteAllText(saveDialog.FileName, csv);
                     StatusText.Text = $"Exported {_trafficEntries.Count} entries to CSV";
                     MessageBox.Show($"Successfully exported {_trafficEntries.Count} entries to:\n{saveDialog.FileName}",
@@ -1055,7 +1055,7 @@ namespace WebTrafficInspector
 
                 if (saveDialog.ShowDialog() == true)
                 {
-                    var xml = _exportService.ExportToXml(_trafficEntries.ToList());
+                    var xml = _exportService.ExportToXML(_trafficEntries.ToList());
                     File.WriteAllText(saveDialog.FileName, xml);
                     StatusText.Text = $"Exported {_trafficEntries.Count} entries to XML";
                     MessageBox.Show($"Successfully exported {_trafficEntries.Count} entries to:\n{saveDialog.FileName}",

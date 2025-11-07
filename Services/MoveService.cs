@@ -513,6 +513,30 @@ namespace WebTrafficInspector.Services
         }
 
         /// <summary>
+        /// Move a list of entries to the top of the collection
+        /// </summary>
+        public void MoveToTop(ObservableCollection<TrafficEntry> entries, List<TrafficEntry> entriesToMove)
+        {
+            if (entries == null || entriesToMove == null || entriesToMove.Count == 0)
+                return;
+
+            // Remove entries from their current positions (in reverse order to maintain indices)
+            var sortedEntries = entriesToMove.OrderByDescending(e => entries.IndexOf(e)).ToList();
+            foreach (var entry in sortedEntries)
+            {
+                entries.Remove(entry);
+            }
+
+            // Add entries to the top (in reverse order to maintain their original order)
+            foreach (var entry in entriesToMove)
+            {
+                entries.Insert(0, entry);
+            }
+
+            ReassignIds(entries);
+        }
+
+        /// <summary>
         /// Detect duplicate entries based on URL and method
         /// </summary>
         public List<DuplicateGroup> FindDuplicates(ObservableCollection<TrafficEntry> entries,
