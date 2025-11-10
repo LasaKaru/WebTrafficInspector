@@ -30,7 +30,7 @@ namespace WebTrafficInspector.Services
             {
                 sb.AppendLine($"curl -X POST '{url}' \\");
                 sb.AppendLine("  -H 'Content-Type: application/json' \\");
-                sb.AppendLine($"  -d '{{\"id\":\"{payload\"}}'");
+                sb.AppendLine($"  -d '{{\"id\":\"{payload}\"}}'");
             }
 
             sb.AppendLine();
@@ -114,7 +114,7 @@ namespace WebTrafficInspector.Services
                 sb.AppendLine("Example POST request:");
                 sb.AppendLine($"curl -X POST '{url}' \\");
                 sb.AppendLine("  -H 'Content-Type: application/json' \\");
-                sb.AppendLine($"  -d '{{\"comment\":\"{payload\"}}'");
+                sb.AppendLine($"  -d '{{\"comment\":\"{payload}\"}}'");
             }
 
             sb.AppendLine();
@@ -487,6 +487,406 @@ namespace WebTrafficInspector.Services
             sb.AppendLine("- Avoid using Access-Control-Allow-Origin: *");
             sb.AppendLine("- Never reflect arbitrary Origin headers");
             sb.AppendLine("- Implement proper authentication");
+
+            return sb.ToString();
+        }
+
+        #endregion
+
+
+        #region Additional PoC Methods
+
+        private string GenerateAccessControlPoC(string url, string response)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Broken Access Control Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine($"GET {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Unauthorized access to restricted resources");
+            sb.AppendLine("- Data exposure");
+            sb.AppendLine("- Privilege escalation");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement proper authentication and authorization");
+            sb.AppendLine("- Use role-based access control (RBAC)");
+            sb.AppendLine("- Validate permissions on every request");
+
+            return sb.ToString();
+        }
+
+        private string GenerateSecurityHeaderPoC(string header, string description)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Missing Security Header Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Missing Header: {header}");
+            sb.AppendLine($"Description: {description}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Increased vulnerability to various attacks");
+            sb.AppendLine("- No defense-in-depth protection");
+            sb.AppendLine("- Browser security features disabled");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine($"- Add {header} header to responses");
+            sb.AppendLine("- Implement comprehensive security headers");
+            sb.AppendLine("- Use security middleware");
+
+            return sb.ToString();
+        }
+
+        private string GenerateVerboseErrorPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Verbose Error Messages Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine($"GET {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Information disclosure");
+            sb.AppendLine("- Technology fingerprinting");
+            sb.AppendLine("- Attack vector identification");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use generic error messages");
+            sb.AppendLine("- Log detailed errors server-side only");
+            sb.AppendLine("- Disable debug mode in production");
+
+            return sb.ToString();
+        }
+
+        private string GenerateDirectoryListingPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Directory Listing Enabled Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine($"GET {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Information disclosure");
+            sb.AppendLine("- File enumeration");
+            sb.AppendLine("- Source code exposure");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Disable directory listing");
+            sb.AppendLine("- Use proper web server configuration");
+            sb.AppendLine("- Implement access controls");
+
+            return sb.ToString();
+        }
+
+        private string GenerateVulnerableComponentPoC(string component, string description)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Vulnerable Component Detected Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Component: {component}");
+            sb.AppendLine($"Description: {description}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Known vulnerabilities exploitation");
+            sb.AppendLine("- Security bypass");
+            sb.AppendLine("- Remote code execution");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Update to latest secure versions");
+            sb.AppendLine("- Use dependency scanning tools");
+            sb.AppendLine("- Implement software composition analysis");
+
+            return sb.ToString();
+        }
+
+        private string GenerateCDNInsecurePoC()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Insecure CDN Resource Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Issue: Resources loaded over insecure HTTP from CDN");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Man-in-the-middle attacks");
+            sb.AppendLine("- Content injection");
+            sb.AppendLine("- Data tampering");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use HTTPS for all CDN resources");
+            sb.AppendLine("- Implement Subresource Integrity (SRI)");
+            sb.AppendLine("- Use trusted CDNs only");
+
+            return sb.ToString();
+        }
+
+        private string GenerateHTTPPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== HTTP Security Issues Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Data interception");
+            sb.AppendLine("- Session hijacking");
+            sb.AppendLine("- Credential theft");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Enforce HTTPS");
+            sb.AppendLine("- Implement HSTS");
+            sb.AppendLine("- Use secure cookies");
+
+            return sb.ToString();
+        }
+
+        private string GenerateSensitiveDataPoC(string url, string pattern)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Sensitive Data Exposure Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Pattern: {pattern}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Data breach");
+            sb.AppendLine("- Privacy violation");
+            sb.AppendLine("- Compliance violation");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Encrypt sensitive data");
+            sb.AppendLine("- Implement proper data handling");
+            sb.AppendLine("- Use secure transmission protocols");
+
+            return sb.ToString();
+        }
+
+        private string GenerateWeakCryptoPoC(string algorithm)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Weak Cryptographic Algorithm Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Algorithm: {algorithm}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Data compromise");
+            sb.AppendLine("- Cryptographic attacks");
+            sb.AppendLine("- Security bypass");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use strong cryptographic algorithms");
+            sb.AppendLine("- Implement proper key management");
+            sb.AppendLine("- Follow cryptographic best practices");
+
+            return sb.ToString();
+        }
+
+        private string GenerateRateLimitPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Missing Rate Limiting Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine("- Send unlimited requests");
+            sb.AppendLine("- No throttling mechanism");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Denial of Service (DoS)");
+            sb.AppendLine("- Brute force attacks");
+            sb.AppendLine("- Resource exhaustion");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement rate limiting");
+            sb.AppendLine("- Use sliding window algorithm");
+            sb.AppendLine("- Add CAPTCHA for sensitive operations");
+
+            return sb.ToString();
+        }
+
+        private string GenerateBusinessLogicPoC(string url, string param)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Business Logic Flaw Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Parameter: {param}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine("- Manipulate business logic constraints");
+            sb.AppendLine("- Exploit validation gaps");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Financial loss");
+            sb.AppendLine("- Fraud");
+            sb.AppendLine("- Data manipulation");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement comprehensive validation");
+            sb.AppendLine("- Use server-side checks");
+            sb.AppendLine("- Apply business rule constraints");
+
+            return sb.ToString();
+        }
+
+        private string GenerateWeakCredentialsPoC(string url, string username, string password)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Weak Default Credentials Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Credentials: {username}/{password}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine("- Use common default credentials");
+            sb.AppendLine("- Automated credential testing");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Unauthorized access");
+            sb.AppendLine("- Account takeover");
+            sb.AppendLine("- System compromise");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Change default credentials");
+            sb.AppendLine("- Implement strong password policy");
+            sb.AppendLine("- Use multi-factor authentication");
+
+            return sb.ToString();
+        }
+
+        private string GenerateSessionFixationPoC(string url, string sessionId)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Session Fixation Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Session ID: {sessionId}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine("- Set known session ID");
+            sb.AppendLine("- Victim logs in with same session");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Account hijacking");
+            sb.AppendLine("- Session stealing");
+            sb.AppendLine("- Unauthorized access");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Regenerate session ID after login");
+            sb.AppendLine("- Use secure session management");
+            sb.AppendLine("- Implement session timeout");
+
+            return sb.ToString();
+        }
+
+        private string GenerateSRIPoC()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Missing Subresource Integrity Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Issue: External resources loaded without integrity checks");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Supply chain attacks");
+            sb.AppendLine("- Content injection");
+            sb.AppendLine("- Malware distribution");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement Subresource Integrity (SRI)");
+            sb.AppendLine("- Use trusted CDNs");
+            sb.AppendLine("- Validate resource integrity");
+
+            return sb.ToString();
+        }
+
+        private string GenerateDeserializationPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Insecure Deserialization Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation:");
+            sb.AppendLine("- Send serialized malicious objects");
+            sb.AppendLine("- Trigger deserialization vulnerabilities");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Remote code execution");
+            sb.AppendLine("- Data tampering");
+            sb.AppendLine("- System compromise");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Avoid deserializing untrusted data");
+            sb.AppendLine("- Implement proper validation");
+            sb.AppendLine("- Use safe serialization formats");
+
+            return sb.ToString();
+        }
+
+        private string GenerateLoggingPoC()
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Insufficient Security Event Logging Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Issue: Security events not properly logged");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Lack of audit trail");
+            sb.AppendLine("- Difficulty in incident response");
+            sb.AppendLine("- Compliance violations");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement comprehensive logging");
+            sb.AppendLine("- Log security-relevant events");
+            sb.AppendLine("- Monitor and analyze logs");
+
+            return sb.ToString();
+        }
+
+        private string GenerateExceptionHandlingPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Unhandled Exception Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Information disclosure");
+            sb.AppendLine("- System instability");
+            sb.AppendLine("- Attack vector exposure");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement proper error handling");
+            sb.AppendLine("- Use generic error messages");
+            sb.AppendLine("- Log exceptions securely");
+
+            return sb.ToString();
+        }
+
+        private string GenerateNullExceptionPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Null Reference Exception Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Impact:");
+            sb.AppendLine("- Application crashes");
+            sb.AppendLine("- Denial of service");
+            sb.AppendLine("- Unexpected behavior");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement null checks");
+            sb.AppendLine("- Use defensive programming");
+            sb.AppendLine("- Handle edge cases properly");
 
             return sb.ToString();
         }

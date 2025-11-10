@@ -25,88 +25,167 @@ namespace WebTrafficInspector
 
         public OWASPT10ScanWindow(OWASPT10_2025_ScannerService scanner)
         {
-            InitializeComponent();
-            _scanner = scanner;
-            _scanReports = new ObservableCollection<OWASPT10ScanReportViewModel>();
-            _allVulnerabilities = new ObservableCollection<OWASPT10Vulnerability>();
-            _filteredVulnerabilities = new ObservableCollection<OWASPT10Vulnerability>();
+            try
+            {
+                InitializeComponent();
+                _scanner = scanner;
+                _scanReports = new ObservableCollection<OWASPT10ScanReportViewModel>();
+                _allVulnerabilities = new ObservableCollection<OWASPT10Vulnerability>();
+                _filteredVulnerabilities = new ObservableCollection<OWASPT10Vulnerability>();
 
-            ScannedUrlsDataGrid.ItemsSource = _scanReports;
-            VulnerabilitiesDataGrid.ItemsSource = _filteredVulnerabilities;
+                // Check that UI elements are properly initialized
+                if (ScannedUrlsDataGrid != null)
+                    ScannedUrlsDataGrid.ItemsSource = _scanReports;
+                if (VulnerabilitiesDataGrid != null)
+                    VulnerabilitiesDataGrid.ItemsSource = _filteredVulnerabilities;
 
-            // Subscribe to scanner events
-            _scanner.ScanProgress += OnScanProgress;
-            _scanner.VulnerabilityFound += OnVulnerabilityFound;
+                // Subscribe to scanner events (with null check)
+                if (_scanner != null)
+                {
+                    _scanner.ScanProgress += OnScanProgress;
+                    _scanner.VulnerabilityFound += OnVulnerabilityFound;
+                }
 
-            LoadExistingScanResults();
-            UpdateStatistics();
-            EnableScannerCheckBox.IsChecked = _scanner.IsEnabled;
+                LoadExistingScanResults();
+                UpdateStatistics();
+                
+                // Check that UI elements are properly initialized before accessing them
+                if (EnableScannerCheckBox != null)
+                    EnableScannerCheckBox.IsChecked = _scanner?.IsEnabled ?? false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to initialize OWASP scanner window: {ex.Message}\n\n{ex.StackTrace}", 
+                    "Initialization Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
         }
 
         private void LoadExistingScanResults()
         {
-            var results = _scanner.GetAllScanResults();
-            foreach (var result in results)
+            try
             {
-                var viewModel = new OWASPT10ScanReportViewModel(result.Value);
-                _scanReports.Add(viewModel);
-            }
+                if (_scanner == null || _scanReports == null)
+                    return;
 
-            UpdateStatistics();
+                var results = _scanner.GetAllScanResults();
+                foreach (var result in results)
+                {
+                    var viewModel = new OWASPT10ScanReportViewModel(result.Value);
+                    _scanReports.Add(viewModel);
+                }
+
+                UpdateStatistics();
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash the application
+                System.Diagnostics.Debug.WriteLine($"Error loading existing scan results: {ex.Message}");
+            }
         }
 
         private void OnScanProgress(object sender, OWASPT10ScanProgressEventArgs e)
         {
+            if (Dispatcher == null) return;
+
             Dispatcher.BeginInvoke(() =>
             {
-                StatusText.Text = $"Scanning: {e.CurrentCategory} - {e.Message}";
-                ScanProgressBar.Value = e.ProgressPercentage;
-                ProgressText.Text = $"{e.ProgressPercentage:F0}% - {e.Message}";
-
-                if (ScanProgressBar.Visibility == Visibility.Collapsed)
+                try
                 {
-                    ScanProgressBar.Visibility = Visibility.Visible;
-                    ProgressText.Visibility = Visibility.Visible;
+                    if (StatusText != null)
+                        StatusText.Text = $"Scanning: {e.CurrentCategory} - {e.Message}";
+                    
+                    if (ScanProgressBar != null)
+                        ScanProgressBar.Value = e.ProgressPercentage;
+                    
+                    if (ProgressText != null)
+                        ProgressText.Text = $"{e.ProgressPercentage:F0}% - {e.Message}";
+
+                    if (ScanProgressBar != null && ScanProgressBar.Visibility == Visibility.Collapsed)
+                    {
+                        ScanProgressBar.Visibility = Visibility.Visible;
+                        if (ProgressText != null)
+                            ProgressText.Visibility = Visibility.Visible;
+                    }
+
+                    // Update the specific report status
+                    if (_scanReports != null)
+                    {
+                        var report = _scanReports.FirstOrDefault(r => r.Url == e.Url);
+                        if (report != null)
+                        {
+                            report.Status = "Scanning...";
+                        }
+                    }
                 }
-
-                // Update the specific report status
-                var report = _scanReports.FirstOrDefault(r => r.Url == e.Url);
-                if (report != null)
+                catch (Exception ex)
                 {
-                    report.Status = "Scanning...";
+                    System.Diagnostics.Debug.WriteLine($"Error in OnScanProgress: {ex.Message}");
                 }
             });
         }
 
         private void OnVulnerabilityFound(object sender, OWASPT10VulnerabilityFoundEventArgs e)
         {
+            if (Dispatcher == null) return;
+
             Dispatcher.BeginInvoke(() =>
             {
-                StatusText.Text = $"Vulnerability found: {e.Vulnerability.Type} ({e.Vulnerability.Severity})";
-                StatusText.Foreground = System.Windows.Media.Brushes.Red;
+                try
+                {
+                    if (StatusText != null)
+                    {
+                        StatusText.Text = $"Vulnerability found: {e.Vulnerability?.Type} ({e.Vulnerability?.Severity})";
+                        StatusText.Foreground = System.Windows.Media.Brushes.Red;
+                    }
 
-                // Update statistics
-                UpdateStatistics();
+                    // Update statistics
+                    UpdateStatistics();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error in OnVulnerabilityFound: {ex.Message}");
+                }
             });
         }
 
         private void EnableScannerCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (_scanner != null)
+            try
             {
-                _scanner.IsEnabled = true;
-                StatusText.Text = "Automatic scanning enabled - All new URLs will be scanned";
-                StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                if (_scanner != null)
+                {
+                    _scanner.IsEnabled = true;
+                    if (StatusText != null)
+                    {
+                        StatusText.Text = "Automatic scanning enabled - All new URLs will be scanned";
+                        StatusText.Foreground = System.Windows.Media.Brushes.Green;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in EnableScannerCheckBox_Checked: {ex.Message}");
             }
         }
 
         private void EnableScannerCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (_scanner != null)
+            try
             {
-                _scanner.IsEnabled = false;
-                StatusText.Text = "Automatic scanning disabled";
-                StatusText.Foreground = System.Windows.Media.Brushes.Orange;
+                if (_scanner != null)
+                {
+                    _scanner.IsEnabled = false;
+                    if (StatusText != null)
+                    {
+                        StatusText.Text = "Automatic scanning disabled";
+                        StatusText.Foreground = System.Windows.Media.Brushes.Orange;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in EnableScannerCheckBox_Unchecked: {ex.Message}");
             }
         }
 
@@ -274,105 +353,168 @@ namespace WebTrafficInspector
 
         private void ScannedUrlsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selectedReport = ScannedUrlsDataGrid.SelectedItem as OWASPT10ScanReportViewModel;
-            if (selectedReport == null)
-                return;
+            try
+            {
+                if (ScannedUrlsDataGrid == null)
+                    return;
 
-            _currentReport = selectedReport.Report;
-            DisplayScanReport(_currentReport);
+                var selectedReport = ScannedUrlsDataGrid.SelectedItem as OWASPT10ScanReportViewModel;
+                if (selectedReport == null)
+                    return;
+
+                _currentReport = selectedReport.Report;
+                DisplayScanReport(_currentReport);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in ScannedUrlsDataGrid_SelectionChanged: {ex.Message}");
+            }
         }
 
         private void DisplayScanReport(OWASPT10ScanReport report)
         {
-            if (report == null)
-                return;
-
-            // Update Summary tab
-            SummaryUrlTextBox.Text = report.Url;
-            ScanDurationTextBox.Text = $"{report.Duration:F2} seconds";
-            TotalVulnerabilitiesTextBox.Text = report.TotalVulnerabilitiesFound.ToString();
-
-            // Count vulnerabilities by severity
-            var allVulns = report.VulnerabilitiesByCategory.Values.SelectMany(v => v).ToList();
-            CriticalCountText.Text = allVulns.Count(v => v.Severity == "Critical").ToString();
-            HighCountText.Text = allVulns.Count(v => v.Severity == "High").ToString();
-            MediumCountText.Text = allVulns.Count(v => v.Severity == "Medium").ToString();
-            LowCountText.Text = allVulns.Count(v => v.Severity == "Low").ToString();
-
-            // Display categories
-            var categoriesSummary = "";
-            foreach (var category in report.VulnerabilitiesByCategory)
+            try
             {
-                categoriesSummary += $"✓ {category.Key}: {category.Value.Count} vulnerabilities found\n";
-            }
-            CategoriesTextBox.Text = categoriesSummary;
+                if (report == null)
+                    return;
 
-            // Load all vulnerabilities
-            _allVulnerabilities.Clear();
-            foreach (var vuln in allVulns)
+                // Update Summary tab
+                if (SummaryUrlTextBox != null)
+                    SummaryUrlTextBox.Text = report.Url;
+                if (ScanDurationTextBox != null)
+                    ScanDurationTextBox.Text = $"{report.Duration:F2} seconds";
+                if (TotalVulnerabilitiesTextBox != null)
+                    TotalVulnerabilitiesTextBox.Text = report.TotalVulnerabilitiesFound.ToString();
+
+                // Count vulnerabilities by severity
+                var allVulns = report.VulnerabilitiesByCategory.Values.SelectMany(v => v).ToList();
+                if (CriticalCountText != null)
+                    CriticalCountText.Text = allVulns.Count(v => v.Severity == "Critical").ToString();
+                if (HighCountText != null)
+                    HighCountText.Text = allVulns.Count(v => v.Severity == "High").ToString();
+                if (MediumCountText != null)
+                    MediumCountText.Text = allVulns.Count(v => v.Severity == "Medium").ToString();
+                if (LowCountText != null)
+                    LowCountText.Text = allVulns.Count(v => v.Severity == "Low").ToString();
+
+                // Display categories
+                var categoriesSummary = "";
+                foreach (var category in report.VulnerabilitiesByCategory)
+                {
+                    categoriesSummary += $"✓ {category.Key}: {category.Value.Count} vulnerabilities found\n";
+                }
+                if (CategoriesTextBox != null)
+                    CategoriesTextBox.Text = categoriesSummary;
+
+                // Load all vulnerabilities
+                if (_allVulnerabilities != null)
+                {
+                    _allVulnerabilities.Clear();
+                    foreach (var vuln in allVulns)
+                    {
+                        _allVulnerabilities.Add(vuln);
+                    }
+                    ApplyVulnerabilityFilter();
+                }
+
+                // Display original request/response
+                if (OriginalRequestTextBox != null)
+                    OriginalRequestTextBox.Text = report.OriginalRequest ?? "No original request captured";
+                if (OriginalResponseTextBox != null)
+                    OriginalResponseTextBox.Text = report.OriginalResponse ?? "No original response captured";
+
+                // Clear other fields
+                if (VulnerabilityDetailsTextBox != null)
+                    VulnerabilityDetailsTextBox.Clear();
+                if (PoCTextBox != null)
+                    PoCTextBox.Clear();
+                if (TestRequestTextBox != null)
+                    TestRequestTextBox.Clear();
+                if (TestResponseTextBox != null)
+                    TestResponseTextBox.Clear();
+            }
+            catch (Exception ex)
             {
-                _allVulnerabilities.Add(vuln);
+                System.Diagnostics.Debug.WriteLine($"Error in DisplayScanReport: {ex.Message}");
             }
-            ApplyVulnerabilityFilter();
-
-            // Display original request/response
-            OriginalRequestTextBox.Text = report.OriginalRequest ?? "No original request captured";
-            OriginalResponseTextBox.Text = report.OriginalResponse ?? "No original response captured";
-
-            // Clear other fields
-            VulnerabilityDetailsTextBox.Clear();
-            PoCTextBox.Clear();
-            TestRequestTextBox.Clear();
-            TestResponseTextBox.Clear();
         }
 
         private void VulnerabilitiesDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selectedVuln = VulnerabilitiesDataGrid.SelectedItem as OWASPT10Vulnerability;
-            if (selectedVuln == null)
-                return;
+            try
+            {
+                if (VulnerabilitiesDataGrid == null)
+                    return;
 
-            _currentVulnerability = selectedVuln;
-            DisplayVulnerabilityDetails(selectedVuln);
+                var selectedVuln = VulnerabilitiesDataGrid.SelectedItem as OWASPT10Vulnerability;
+                if (selectedVuln == null)
+                    return;
+
+                _currentVulnerability = selectedVuln;
+                DisplayVulnerabilityDetails(selectedVuln);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in VulnerabilitiesDataGrid_SelectionChanged: {ex.Message}");
+            }
         }
 
         private void DisplayVulnerabilityDetails(OWASPT10Vulnerability vuln)
         {
-            if (vuln == null)
-                return;
+            try
+            {
+                if (vuln == null)
+                    return;
 
-            // Display vulnerability details
-            var details = $"Category: {vuln.Category}\n\n";
-            details += $"Type: {vuln.Type}\n\n";
-            details += $"Severity: {vuln.Severity}\n\n";
-            details += $"Description: {vuln.Description}\n\n";
-            details += $"Evidence: {vuln.Evidence}\n\n";
-            details += $"CWE: {vuln.CWE}\n\n";
-            details += $"Test URL: {vuln.TestUrl}\n";
+                // Display vulnerability details
+                var details = $"Category: {vuln.Category}\n\n";
+                details += $"Type: {vuln.Type}\n\n";
+                details += $"Severity: {vuln.Severity}\n\n";
+                details += $"Description: {vuln.Description}\n\n";
+                details += $"Evidence: {vuln.Evidence}\n\n";
+                details += $"CWE: {vuln.CWE}\n\n";
+                details += $"Test URL: {vuln.TestUrl}\n";
 
-            VulnerabilityDetailsTextBox.Text = details;
+                if (VulnerabilityDetailsTextBox != null)
+                    VulnerabilityDetailsTextBox.Text = details;
 
-            // Display PoC
-            PoCTextBox.Text = vuln.PoC ?? "No Proof of Concept available";
+                // Display PoC
+                if (PoCTextBox != null)
+                    PoCTextBox.Text = vuln.PoC ?? "No Proof of Concept available";
 
-            // Display test request/response
-            TestRequestTextBox.Text = vuln.TestRequest ?? "No test request available";
-            TestResponseTextBox.Text = vuln.TestResponse ?? "No test response available";
+                // Display test request/response
+                if (TestRequestTextBox != null)
+                    TestRequestTextBox.Text = vuln.TestRequest ?? "No test request available";
+                if (TestResponseTextBox != null)
+                    TestResponseTextBox.Text = vuln.TestResponse ?? "No test response available";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in DisplayVulnerabilityDetails: {ex.Message}");
+            }
         }
 
         private void FilterCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            ApplyVulnerabilityFilter();
+            // Add null check to prevent NullReferenceException
+            if (_filteredVulnerabilities != null && _allVulnerabilities != null)
+            {
+                ApplyVulnerabilityFilter();
+            }
         }
 
         private void ApplyVulnerabilityFilter()
         {
+            // Add null checks to prevent NullReferenceException
+            if (_filteredVulnerabilities == null || _allVulnerabilities == null)
+                return;
+
             _filteredVulnerabilities.Clear();
 
-            var showCritical = FilterCriticalCheckBox.IsChecked ?? true;
-            var showHigh = FilterHighCheckBox.IsChecked ?? true;
-            var showMedium = FilterMediumCheckBox.IsChecked ?? true;
-            var showLow = FilterLowCheckBox.IsChecked ?? true;
+            var showCritical = FilterCriticalCheckBox?.IsChecked ?? true;
+            var showHigh = FilterHighCheckBox?.IsChecked ?? true;
+            var showMedium = FilterMediumCheckBox?.IsChecked ?? true;
+            var showLow = FilterLowCheckBox?.IsChecked ?? true;
 
             foreach (var vuln in _allVulnerabilities)
             {
@@ -391,10 +533,21 @@ namespace WebTrafficInspector
 
         private void UpdateStatistics()
         {
-            var totalScanned = _scanReports.Count;
-            var totalVulnerable = _scanReports.Count(r => r.HasVulnerabilities);
+            try
+            {
+                if (_scanReports == null || StatsText == null)
+                    return;
 
-            StatsText.Text = $"Scanned: {totalScanned} | Vulnerable: {totalVulnerable}";
+                var totalScanned = _scanReports.Count;
+                var totalVulnerable = _scanReports.Count(r => r.HasVulnerabilities);
+
+                StatsText.Text = $"Scanned: {totalScanned} | Vulnerable: {totalVulnerable}";
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't crash the application
+                System.Diagnostics.Debug.WriteLine($"Error updating statistics: {ex.Message}");
+            }
         }
 
         private async void ExportHTMLReportButton_Click(object sender, RoutedEventArgs e)

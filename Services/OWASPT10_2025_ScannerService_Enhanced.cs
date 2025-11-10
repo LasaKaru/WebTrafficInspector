@@ -22,7 +22,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing advanced SQL injection vectors on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing advanced SQL injection vectors on {url}...", CurrentCategory = "SQL Injection", Message = $"Testing advanced SQL injection vectors on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.SQLInjectionPayloads)
             {
@@ -74,7 +74,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing advanced NoSQL injection vectors on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing advanced NoSQL injection vectors on {url}...", CurrentCategory = "NoSQL Injection", Message = "Testing advanced NoSQL injection vectors on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.NoSQLInjectionPayloads)
             {
@@ -122,7 +122,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing advanced XSS vectors on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing advanced XSS vectors on {url}...", CurrentCategory = "XSS", Message = "Testing advanced XSS vectors on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.XSSPayloads)
             {
@@ -176,7 +176,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing advanced command injection vectors on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing advanced command injection vectors on {url}...", CurrentCategory = "Command Injection", Message = "Testing advanced command injection vectors on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.CommandInjectionPayloads)
             {
@@ -210,7 +210,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing LDAP injection vectors on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing LDAP injection vectors on {url}...", CurrentCategory = "LDAP Injection", Message = "Testing LDAP injection vectors on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.LDAPInjectionPayloads)
             {
@@ -244,7 +244,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing XXE vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing XXE vulnerabilities on {url}...", CurrentCategory = "XXE", Message = "Testing XXE vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.XXEPayloads)
             {
@@ -278,7 +278,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing SSRF vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing SSRF vulnerabilities on {url}...", CurrentCategory = "SSRF", Message = "Testing SSRF vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.SSRFPayloads)
             {
@@ -312,7 +312,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing SSTI vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing SSTI vulnerabilities on {url}...", CurrentCategory = "SSTI", Message = "Testing SSTI vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.SSTIPayloads)
             {
@@ -346,7 +346,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing path traversal vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing path traversal vulnerabilities on {url}...", CurrentCategory = "Path Traversal", Message = "Testing path traversal vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.PathTraversalPayloads)
             {
@@ -380,7 +380,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing file inclusion vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing file inclusion vulnerabilities on {url}...", CurrentCategory = "File Inclusion", Message = "Testing file inclusion vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             foreach (var payload in AdvancedPayloads.FileInclusionPayloads)
             {

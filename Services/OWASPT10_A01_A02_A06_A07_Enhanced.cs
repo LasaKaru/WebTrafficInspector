@@ -26,7 +26,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing enhanced IDOR vulnerabilities on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing enhanced IDOR vulnerabilities on {url}...", CurrentCategory = "IDOR", Message = $"Testing enhanced IDOR vulnerabilities on {url}...", ProgressPercentage = 0 });
 
             // Extract current ID from URL if present
             var currentId = ExtractIdFromUrl(url);
@@ -96,7 +96,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing enhanced CORS misconfigurations on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing enhanced CORS misconfigurations on {url}...", CurrentCategory = "CORS", Message = $"Testing enhanced CORS misconfigurations on {url}...", ProgressPercentage = 0 });
 
             foreach (var origin in AdvancedPayloads.CORSTestOrigins)
             {
@@ -148,7 +148,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing path-based access control bypass on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing path-based access control bypass on {url}...", CurrentCategory = "Access Control", Message = $"Testing path-based access control bypass on {url}...", ProgressPercentage = 0 });
 
             var bypassTechniques = new[]
             {
@@ -197,7 +197,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing enhanced cryptographic failures on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing enhanced cryptographic failures on {url}...", CurrentCategory = "Cryptographic Failures", Message = $"Testing enhanced cryptographic failures on {url}...", ProgressPercentage = 0 });
 
             // Test weak encryption algorithms
             results.AddRange(await TestWeakEncryptionAsync(url));
@@ -322,7 +322,8 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing for vulnerable components on {url}...");
+            //OnScanProgress?.Invoke($"Testing for vulnerable components on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing enhanced CORS misconfigurations on {url}...", CurrentCategory = "CORS", Message = $"Testing enhanced CORS misconfigurations on {url}...", ProgressPercentage = 0 });
 
             // Test for known vulnerable libraries
             results.AddRange(await DetectVulnerableLibrariesAsync(url));
@@ -462,7 +463,7 @@ namespace WebTrafficInspector.Services
         {
             var results = new List<string>();
 
-            OnScanProgress?.Invoke($"Testing enhanced authentication failures on {url}...");
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Testing enhanced CORS misconfigurations on {url}...", CurrentCategory = "CORS", Message = $"Testing enhanced CORS misconfigurations on {url}...", ProgressPercentage = 0 });
 
             // Test for brute force protection
             results.AddRange(await TestBruteForceProtectionAsync(url));

