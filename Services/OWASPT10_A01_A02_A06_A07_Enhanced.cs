@@ -1,863 +1,750 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
-using System.Web;
-using WebTrafficInspector.Models;
+using System.Text;
+using System.Text.Json;
 
 namespace WebTrafficInspector.Services
 {
     /// <summary>
-    /// Enhanced testing for A01, A02, A06, and A07 OWASP categories
+    /// Enhanced testing methods for specific OWASP Top 10 2025 categories
+    /// A01: Broken Access Control
+    /// A02: Cryptographic Failures
+    /// A06: Vulnerable and Outdated Components
+    /// A07: Identification and Authentication Failures
     /// </summary>
     public partial class OWASPT10_2025_ScannerService
     {
-        #region Enhanced A01: Broken Access Control
+        #region A01: Enhanced Broken Access Control Testing
 
         /// <summary>
-        /// Comprehensive broken access control testing
+        /// Enhanced IDOR testing with multiple ID formats
         /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestBrokenAccessControlEnhanced(string url, TrafficEntry originalEntry)
+        private async Task<List<string>> TestEnhancedIDORAsync(string url)
         {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
+            var results = new List<string>();
 
-            // IDOR Testing (Enhanced)
-            vulnerabilities.AddRange(await TestIDORAdvanced(url));
+            OnScanProgress?.Invoke($"Testing enhanced IDOR vulnerabilities on {url}...");
 
-            // Path Traversal Testing (Enhanced)
-            vulnerabilities.AddRange(await TestPathTraversalAdvanced(url));
+            // Extract current ID from URL if present
+            var currentId = ExtractIdFromUrl(url);
 
-            // Open Redirect Testing (New)
-            vulnerabilities.AddRange(await TestOpenRedirect(url));
-
-            // Missing Function Level Access Control (Enhanced)
-            vulnerabilities.AddRange(await TestMissingFunctionLevelAccessControl(url));
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Advanced IDOR testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestIDORAdvanced(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-            var parameters = ExtractParameters(url);
-
-            var idorParamNames = new[] { "id", "user_id", "uid", "userid", "account", "accountid", "doc", "file", "key", "order", "invoice" };
-
-            foreach (var param in parameters)
-            {
-                if (!idorParamNames.Any(name => param.ToLower().Contains(name)))
-                    continue;
-
-                // Get current value
-                var currentValue = GetParameterValue(url, param);
-
-                foreach (var testValue in AdvancedPayloads.IDORTestValues.Take(10))
-                {
-                    try
-                    {
-                        var testUrl = ReplaceParameter(url, param, testValue);
-                        var result = await TestRequest(testUrl, "GET");
-
-                        // Check if unauthorized access was granted
-                        if (result.IsSuccessful && result.StatusCode == 200 &&
-                            !string.IsNullOrEmpty(result.Response) &&
-                            result.Response.Length > 100) // Has substantial content
-                        {
-                            vulnerabilities.Add(new OWASPT10Vulnerability
-                            {
-                                Category = "A01:2025 - Broken Access Control",
-                                Type = "Insecure Direct Object Reference (IDOR)",
-                                Severity = "High",
-                                Description = $"IDOR vulnerability detected in parameter '{param}'. Able to access resource with value '{testValue}'",
-                                TestUrl = testUrl,
-                                TestRequest = result.Request,
-                                TestResponse = result.Response?.Substring(0, Math.Min(1000, result.Response?.Length ?? 0)),
-                                Evidence = $"Successfully accessed resource by manipulating '{param}' from '{currentValue}' to '{testValue}'",
-                                PoC = GenerateIDORPoCAdvanced(url, param, currentValue, testValue),
-                                CWE = "CWE-639"
-                            });
-                            break;
-                        }
-                    }
-                    catch { continue; }
-                }
-            }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Advanced Path Traversal testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestPathTraversalAdvanced(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-            var parameters = ExtractParameters(url);
-
-            var pathParamNames = new[] { "file", "path", "folder", "dir", "document", "pdf", "download", "filename", "filepath" };
-
-            foreach (var param in parameters)
-            {
-                if (!pathParamNames.Any(name => param.ToLower().Contains(name)))
-                    continue;
-
-                var pathPayloads = AdvancedPayloads.PathTraversalPayloads.Take(15);
-
-                foreach (var payload in pathPayloads)
-                {
-                    try
-                    {
-                        var testUrl = ReplaceParameter(url, param, HttpUtility.UrlEncode(payload));
-                        var result = await TestRequest(testUrl, "GET");
-
-                        if (IsPathTraversalVulnerable(result.Response, payload))
-                        {
-                            vulnerabilities.Add(new OWASPT10Vulnerability
-                            {
-                                Category = "A01:2025 - Broken Access Control",
-                                Type = "Path Traversal / Directory Traversal",
-                                Severity = "High",
-                                Description = $"Path traversal vulnerability detected in parameter '{param}'",
-                                TestUrl = testUrl,
-                                TestRequest = result.Request,
-                                TestResponse = result.Response?.Substring(0, Math.Min(1000, result.Response?.Length ?? 0)),
-                                Evidence = $"Successfully accessed unauthorized file using payload: {payload}",
-                                PoC = GeneratePathTraversalPoC(url, param, payload),
-                                CWE = "CWE-22"
-                            });
-                            break;
-                        }
-                    }
-                    catch { continue; }
-                }
-            }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Open Redirect testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestOpenRedirect(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-            var parameters = ExtractParameters(url);
-
-            var redirectParamNames = new[] { "url", "redirect", "return", "returnto", "next", "goto", "destination", "redirect_uri", "return_url" };
-
-            foreach (var param in parameters)
-            {
-                if (!redirectParamNames.Any(name => param.ToLower().Contains(name)))
-                    continue;
-
-                var redirectPayloads = AdvancedPayloads.OpenRedirectPayloads.Take(10);
-
-                foreach (var payload in redirectPayloads)
-                {
-                    try
-                    {
-                        var testUrl = ReplaceParameter(url, param, HttpUtility.UrlEncode(payload));
-                        var result = await TestRequestWithHeaders(testUrl, "GET");
-
-                        if (IsOpenRedirectVulnerable(result.Headers, result.StatusCode, payload))
-                        {
-                            vulnerabilities.Add(new OWASPT10Vulnerability
-                            {
-                                Category = "A01:2025 - Broken Access Control",
-                                Type = "Open Redirect",
-                                Severity = "Medium",
-                                Description = $"Open redirect vulnerability detected in parameter '{param}'",
-                                TestUrl = testUrl,
-                                TestRequest = result.Request,
-                                TestResponse = $"Status: {result.StatusCode}, Location: {result.Headers.GetValueOrDefault("Location", "N/A")}",
-                                Evidence = $"Server redirected to external URL: {payload}",
-                                PoC = GenerateOpenRedirectPoC(url, param, payload),
-                                CWE = "CWE-601"
-                            });
-                            break;
-                        }
-                    }
-                    catch { continue; }
-                }
-            }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Missing Function Level Access Control testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestMissingFunctionLevelAccessControl(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-            var baseUrl = GetBaseUrl(url);
-
-            var adminPaths = new[]
-            {
-                "/admin", "/administrator", "/admin.php", "/admin/", "/admin/index.php",
-                "/manage", "/manager", "/management",
-                "/dashboard", "/panel", "/control", "/console",
-                "/api/admin", "/api/users", "/api/internal",
-                "/wp-admin", "/phpmyadmin", "/adminer.php",
-                "/.env", "/config.php", "/backup", "/backup.sql"
-            };
-
-            foreach (var adminPath in adminPaths)
+            foreach (var testValue in AdvancedPayloads.IDORTestValues)
             {
                 try
                 {
-                    var testUrl = baseUrl + adminPath;
-                    var result = await TestRequest(testUrl, "GET");
+                    // Test path parameter
+                    var testUrl = url.Contains("{id}")
+                        ? url.Replace("{id}", testValue)
+                        : $"{url}/{testValue}";
 
-                    // Check if accessible without authentication
-                    if (result.IsSuccessful && result.StatusCode == 200 &&
-                        !result.Response.Contains("login", StringComparison.OrdinalIgnoreCase) &&
-                        !result.Response.Contains("forbidden", StringComparison.OrdinalIgnoreCase) &&
-                        !result.Response.Contains("unauthorized", StringComparison.OrdinalIgnoreCase))
-                    {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A01:2025 - Broken Access Control",
-                            Type = "Missing Function Level Access Control",
-                            Severity = "Critical",
-                            Description = $"Administrative or sensitive path '{adminPath}' is accessible without proper authorization",
-                            TestUrl = testUrl,
-                            TestRequest = result.Request,
-                            TestResponse = result.Response?.Substring(0, Math.Min(1000, result.Response?.Length ?? 0)),
-                            Evidence = $"Path '{adminPath}' returned HTTP 200 without authentication requirement",
-                            PoC = GenerateMissingFunctionLevelAccessControlPoC(testUrl, adminPath),
-                            CWE = "CWE-284"
-                        });
-                    }
-                }
-                catch { continue; }
-            }
-
-            return vulnerabilities;
-        }
-
-        #endregion
-
-        #region Enhanced A02: Security Misconfiguration
-
-        /// <summary>
-        /// Comprehensive security misconfiguration testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestSecurityMisconfigurationEnhanced(string url, TrafficEntry originalEntry)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            // Security Headers Testing (Enhanced)
-            vulnerabilities.AddRange(await TestSecurityHeadersAdvanced(url));
-
-            // CORS Misconfiguration Testing (New)
-            vulnerabilities.AddRange(await TestCORSMisconfiguration(url));
-
-            // Clickjacking Testing (New)
-            vulnerabilities.AddRange(await TestClickjacking(url));
-
-            // HTTP Smuggling Detection (New)
-            vulnerabilities.AddRange(await TestHTTPSmuggling(url));
-
-            // Verbose Error Messages (Enhanced)
-            vulnerabilities.AddRange(await TestVerboseErrors(url));
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Advanced security headers testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestSecurityHeadersAdvanced(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            try
-            {
-                var result = await TestRequestWithHeaders(url, "GET");
-
-                var criticalHeaders = new Dictionary<string, string>
-                {
-                    { "Strict-Transport-Security", "HSTS not enabled - Site vulnerable to SSL stripping attacks" },
-                    { "X-Frame-Options", "Clickjacking protection not enabled" },
-                    { "X-Content-Type-Options", "MIME-sniffing protection not enabled" },
-                    { "Content-Security-Policy", "CSP not implemented - XSS protection weakened" },
-                    { "X-XSS-Protection", "XSS filter not enabled (legacy but still useful)" },
-                    { "Referrer-Policy", "Referrer policy not set - Information leakage risk" },
-                    { "Permissions-Policy", "Permissions policy not set - Feature access not restricted" }
-                };
-
-                foreach (var header in criticalHeaders)
-                {
-                    if (!result.Headers.ContainsKey(header.Key))
-                    {
-                        var severity = header.Key == "Strict-Transport-Security" || header.Key == "Content-Security-Policy"
-                            ? "High" : "Medium";
-
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A02:2025 - Security Misconfiguration",
-                            Type = $"Missing Security Header: {header.Key}",
-                            Severity = severity,
-                            Description = header.Value,
-                            TestUrl = url,
-                            TestRequest = result.Request,
-                            TestResponse = $"Headers present: {string.Join(", ", result.Headers.Keys)}",
-                            Evidence = $"Security header '{header.Key}' is missing from response",
-                            PoC = GenerateMissingSecurityHeaderPoC(url, header.Key, header.Value),
-                            CWE = "CWE-16"
-                        });
-                    }
-                }
-
-                // Check for insecure header values
-                if (result.Headers.TryGetValue("X-Frame-Options", out var xFrameValue))
-                {
-                    if (xFrameValue.Equals("ALLOW", StringComparison.OrdinalIgnoreCase) ||
-                        xFrameValue.Equals("ALLOWALL", StringComparison.OrdinalIgnoreCase))
-                    {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A02:2025 - Security Misconfiguration",
-                            Type = "Insecure X-Frame-Options Configuration",
-                            Severity = "Medium",
-                            Description = "X-Frame-Options is set to allow framing, making the site vulnerable to clickjacking",
-                            TestUrl = url,
-                            TestRequest = result.Request,
-                            TestResponse = $"X-Frame-Options: {xFrameValue}",
-                            Evidence = $"X-Frame-Options header value '{xFrameValue}' allows framing",
-                            PoC = GenerateInsecureHeaderPoC(url, "X-Frame-Options", xFrameValue),
-                            CWE = "CWE-1021"
-                        });
-                    }
-                }
-
-                // Check for server information disclosure
-                if (result.Headers.TryGetValue("Server", out var serverValue))
-                {
-                    if (serverValue.Contains("/") || serverValue.Contains("Apache") || serverValue.Contains("nginx"))
-                    {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A02:2025 - Security Misconfiguration",
-                            Type = "Server Information Disclosure",
-                            Severity = "Low",
-                            Description = "Server header reveals version information",
-                            TestUrl = url,
-                            TestRequest = result.Request,
-                            TestResponse = $"Server: {serverValue}",
-                            Evidence = $"Server header exposes: {serverValue}",
-                            PoC = GenerateServerDisclosurePoC(url, serverValue),
-                            CWE = "CWE-200"
-                        });
-                    }
-                }
-
-                // Check for X-Powered-By header
-                if (result.Headers.TryGetValue("X-Powered-By", out var poweredByValue))
-                {
-                    vulnerabilities.Add(new OWASPT10Vulnerability
-                    {
-                        Category = "A02:2025 - Security Misconfiguration",
-                        Type = "Technology Stack Disclosure",
-                        Severity = "Low",
-                        Description = "X-Powered-By header reveals technology stack",
-                        TestUrl = url,
-                        TestRequest = result.Request,
-                        TestResponse = $"X-Powered-By: {poweredByValue}",
-                        Evidence = $"Technology disclosed: {poweredByValue}",
-                        PoC = GenerateTechDisclosurePoC(url, poweredByValue),
-                        CWE = "CWE-200"
-                    });
-                }
-            }
-            catch { }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// CORS misconfiguration testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestCORSMisconfiguration(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            foreach (var origin in AdvancedPayloads.CORSTestOrigins.Take(5))
-            {
-                try
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Get, url);
-                    request.Headers.Add("Origin", origin);
-
-                    var response = await _httpClient.SendAsync(request);
-                    var headers = response.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value));
-
-                    if (headers.TryGetValue("Access-Control-Allow-Origin", out var allowOrigin))
-                    {
-                        // Check for dangerous CORS configurations
-                        if (allowOrigin == "*" ||
-                            allowOrigin == "null" ||
-                            allowOrigin == origin)
-                        {
-                            var severity = (allowOrigin == "*" && headers.ContainsKey("Access-Control-Allow-Credentials"))
-                                ? "Critical" : "High";
-
-                            vulnerabilities.Add(new OWASPT10Vulnerability
-                            {
-                                Category = "A02:2025 - Security Misconfiguration",
-                                Type = "CORS Misconfiguration",
-                                Severity = severity,
-                                Description = $"Insecure CORS policy allows origin: {allowOrigin}",
-                                TestUrl = url,
-                                TestRequest = $"GET {url}\nOrigin: {origin}",
-                                TestResponse = $"Access-Control-Allow-Origin: {allowOrigin}",
-                                Evidence = $"CORS policy allows potentially malicious origin: {allowOrigin}",
-                                PoC = GenerateCORSMisconfigurationPoC(url, origin, allowOrigin),
-                                CWE = "CWE-942"
-                            });
-                            break;
-                        }
-                    }
-                }
-                catch { continue; }
-            }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Clickjacking vulnerability testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestClickjacking(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            try
-            {
-                var result = await TestRequestWithHeaders(url, "GET");
-
-                // Check if X-Frame-Options or CSP frame-ancestors is missing
-                var hasXFrameOptions = result.Headers.ContainsKey("X-Frame-Options");
-                var hasCSPFrameAncestors = result.Headers.TryGetValue("Content-Security-Policy", out var cspValue) &&
-                                          cspValue.Contains("frame-ancestors");
-
-                if (!hasXFrameOptions && !hasCSPFrameAncestors)
-                {
-                    vulnerabilities.Add(new OWASPT10Vulnerability
-                    {
-                        Category = "A02:2025 - Security Misconfiguration",
-                        Type = "Clickjacking Vulnerability",
-                        Severity = "Medium",
-                        Description = "Application is vulnerable to clickjacking attacks - No frame protection headers",
-                        TestUrl = url,
-                        TestRequest = result.Request,
-                        TestResponse = "No X-Frame-Options or CSP frame-ancestors directive found",
-                        Evidence = "Neither X-Frame-Options nor CSP frame-ancestors protection is implemented",
-                        PoC = GenerateClickjackingPoC(url),
-                        CWE = "CWE-1021"
-                    });
-                }
-            }
-            catch { }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// HTTP Request Smuggling detection
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestHTTPSmuggling(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            // Test for CL.TE smuggling
-            try
-            {
-                var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Content = new StringContent("0\r\n\r\nX", Encoding.UTF8);
-                request.Content.Headers.Add("Transfer-Encoding", "chunked");
-                request.Content.Headers.ContentLength = 6;
-
-                var stopwatch = Stopwatch.StartNew();
-                var response = await _httpClient.SendAsync(request);
-                stopwatch.Stop();
-
-                // If server hangs or responds unusually, might be vulnerable
-                if (stopwatch.ElapsedMilliseconds > 5000 || response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    vulnerabilities.Add(new OWASPT10Vulnerability
-                    {
-                        Category = "A02:2025 - Security Misconfiguration",
-                        Type = "Potential HTTP Request Smuggling (CL.TE)",
-                        Severity = "Critical",
-                        Description = "Server may be vulnerable to HTTP request smuggling attacks",
-                        TestUrl = url,
-                        TestRequest = "POST with conflicting Content-Length and Transfer-Encoding",
-                        TestResponse = $"Status: {response.StatusCode}, Time: {stopwatch.ElapsedMilliseconds}ms",
-                        Evidence = "Abnormal response to smuggling probe detected",
-                        PoC = GenerateHTTPSmugglingPoC(url),
-                        CWE = "CWE-444"
-                    });
-                }
-            }
-            catch { }
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// Verbose error message testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestVerboseErrors(string url)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            // Test various error conditions
-            var errorTests = new[]
-            {
-                (url + "/nonexistent" + Guid.NewGuid(), "404 error"),
-                (url + "?param='", "SQL error"),
-                (url + "?param=<test>", "XSS reflection")
-            };
-
-            foreach (var (testUrl, errorType) in errorTests)
-            {
-                try
-                {
-                    var result = await TestRequest(testUrl, "GET");
-
-                    if (IsVerboseError(result.Response))
-                    {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A02:2025 - Security Misconfiguration",
-                            Type = "Verbose Error Messages",
-                            Severity = "Low",
-                            Description = $"Application exposes verbose error messages revealing internal details",
-                            TestUrl = testUrl,
-                            TestRequest = result.Request,
-                            TestResponse = result.Response?.Substring(0, Math.Min(500, result.Response?.Length ?? 0)),
-                            Evidence = "Stack trace or detailed error information exposed",
-                            PoC = GenerateVerboseErrorPoC(testUrl, errorType),
-                            CWE = "CWE-209"
-                        });
-                        break;
-                    }
-                }
-                catch { continue; }
-            }
-
-            return vulnerabilities;
-        }
-
-        #endregion
-
-        #region Enhanced A07: Authentication Failures
-
-        /// <summary>
-        /// Comprehensive authentication testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestAuthenticationFailuresEnhanced(string url, TrafficEntry originalEntry)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            // JWT vulnerabilities (New)
-            vulnerabilities.AddRange(await TestJWTVulnerabilities(url, originalEntry));
-
-            // CSRF Testing (New)
-            vulnerabilities.AddRange(await TestCSRF(url, originalEntry));
-
-            // Weak Credentials (Enhanced)
-            vulnerabilities.AddRange(await TestWeakCredentialsAdvanced(url));
-
-            // Session Fixation (Enhanced)
-            vulnerabilities.AddRange(await TestSessionFixation(url));
-
-            return vulnerabilities;
-        }
-
-        /// <summary>
-        /// JWT vulnerability testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestJWTVulnerabilities(string url, TrafficEntry originalEntry)
-        {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-
-            // Check if JWT is present in request/response
-            var jwtPattern = @"eyJ[A-Za-z0-9-_]+\.eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_.+/]*";
-            var responseHasJWT = originalEntry?.RawResponse != null &&
-                                System.Text.RegularExpressions.Regex.IsMatch(originalEntry.RawResponse, jwtPattern);
-
-            if (responseHasJWT)
-            {
-                // Test none algorithm attack
-                var noneAlgJWT = AdvancedPayloads.JWTAttackPayloads[0]; // None algorithm JWT
-
-                try
-                {
-                    var request = new HttpRequestMessage(HttpMethod.Get, url);
-                    request.Headers.Add("Authorization", $"Bearer {noneAlgJWT}");
-
-                    var response = await _httpClient.SendAsync(request);
+                    var response = await _httpClient.GetAsync(testUrl);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
-                        {
-                            Category = "A07:2025 - Authentication Failures",
-                            Type = "JWT None Algorithm Vulnerability",
-                            Severity = "Critical",
-                            Description = "Application accepts JWT tokens with 'none' algorithm, allowing authentication bypass",
-                            TestUrl = url,
-                            TestRequest = $"GET {url}\nAuthorization: Bearer {noneAlgJWT}",
-                            TestResponse = $"Status: {response.StatusCode}",
-                            Evidence = "JWT with 'none' algorithm was accepted",
-                            PoC = GenerateJWTNoneAlgorithmPoC(url),
-                            CWE = "CWE-287"
-                        });
-                    }
-                }
-                catch { }
+                        var content = await response.Content.ReadAsStringAsync();
 
-                // Note weak secrets (would require brute force)
-                vulnerabilities.Add(new OWASPT10Vulnerability
+                        if (DetectIDORVulnerability(content, response, testValue, currentId))
+                        {
+                            results.Add($"IDOR vulnerability detected accessing: {testValue}");
+                            results.Add(GenerateIDORPoC(url, testValue, currentId));
+                        }
+                    }
+
+                    // Test query parameter variations
+                    var queryUrls = new[]
+                    {
+                        $"{url}?id={testValue}",
+                        $"{url}?user_id={testValue}",
+                        $"{url}?userId={testValue}",
+                        $"{url}?account={testValue}"
+                    };
+
+                    foreach (var queryUrl in queryUrls)
+                    {
+                        var queryResponse = await _httpClient.GetAsync(queryUrl);
+
+                        if (queryResponse.IsSuccessStatusCode)
+                        {
+                            var content = await queryResponse.Content.ReadAsStringAsync();
+
+                            if (DetectIDORVulnerability(content, queryResponse, testValue, currentId))
+                            {
+                                results.Add($"IDOR vulnerability detected in query parameter with ID: {testValue}");
+                                results.Add(GenerateIDORPoC(queryUrl, testValue, currentId));
+                            }
+                        }
+                    }
+
+                    await Task.Delay(100);
+                }
+                catch (Exception ex)
                 {
-                    Category = "A07:2025 - Authentication Failures",
-                    Type = "Potential Weak JWT Secret",
-                    Severity = "High",
-                    Description = "JWT tokens detected - Secret key should be tested for weakness",
-                    TestUrl = url,
-                    TestRequest = originalEntry?.RawRequest ?? "N/A",
-                    TestResponse = "JWT detected in response",
-                    Evidence = "JWT implementation found - Secret strength should be verified",
-                    PoC = GenerateJWTWeakSecretPoC(url),
-                    CWE = "CWE-521"
-                });
+                    System.Diagnostics.Debug.WriteLine($"Error testing IDOR: {ex.Message}");
+                }
             }
 
-            return vulnerabilities;
+            return results;
         }
 
         /// <summary>
-        /// CSRF vulnerability testing
+        /// Enhanced CORS misconfiguration testing
         /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestCSRF(string url, TrafficEntry originalEntry)
+        private async Task<List<string>> TestEnhancedCORSAsync(string url)
         {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
+            var results = new List<string>();
 
-            // Check if state-changing endpoint lacks CSRF protection
-            if (originalEntry?.Method == "POST" || originalEntry?.Method == "PUT" || originalEntry?.Method == "DELETE")
+            OnScanProgress?.Invoke($"Testing enhanced CORS misconfigurations on {url}...");
+
+            foreach (var origin in AdvancedPayloads.CORSTestOrigins)
             {
                 try
                 {
-                    var result = await TestRequestWithHeaders(url, originalEntry.Method);
-
-                    // Check for CSRF token in response
-                    var hasCsrfToken = result.Response?.Contains("csrf", StringComparison.OrdinalIgnoreCase) ?? false;
-                    var hasCsrfHeader = result.Headers.Any(h => h.Key.Contains("csrf", StringComparison.OrdinalIgnoreCase));
-
-                    if (!hasCsrfToken && !hasCsrfHeader)
+                    var headers = new Dictionary<string, string>
                     {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
+                        { "Origin", origin }
+                    };
+
+                    var response = await TestRequestWithHeaders(url, headers);
+
+                    if (response.Headers.Contains("Access-Control-Allow-Origin"))
+                    {
+                        var allowedOrigin = response.Headers.GetValues("Access-Control-Allow-Origin").FirstOrDefault();
+
+                        if (allowedOrigin == "*" || allowedOrigin == origin || allowedOrigin == "null")
                         {
-                            Category = "A07:2025 - Authentication Failures",
-                            Type = "Missing CSRF Protection",
-                            Severity = "High",
-                            Description = $"State-changing endpoint ({originalEntry.Method}) lacks CSRF protection",
-                            TestUrl = url,
-                            TestRequest = originalEntry.RawRequest,
-                            TestResponse = "No CSRF token detected",
-                            Evidence = $"{originalEntry.Method} request without CSRF protection",
-                            PoC = GenerateCSRFPoC(url, originalEntry.Method),
-                            CWE = "CWE-352"
-                        });
+                            var hasCredentials = response.Headers.Contains("Access-Control-Allow-Credentials") &&
+                                               response.Headers.GetValues("Access-Control-Allow-Credentials")
+                                                       .FirstOrDefault() == "true";
+
+                            results.Add($"CORS misconfiguration detected: Origin {origin} is allowed");
+
+                            if (hasCredentials)
+                            {
+                                results.Add("CRITICAL: Credentials are allowed with CORS!");
+                            }
+
+                            results.Add(GenerateCORSPoC(url, origin, allowedOrigin));
+                        }
                     }
+
+                    await Task.Delay(100);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error testing CORS: {ex.Message}");
+                }
             }
 
-            return vulnerabilities;
+            return results;
         }
 
         /// <summary>
-        /// Advanced weak credentials testing
+        /// Test for path-based access control bypass
         /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestWeakCredentialsAdvanced(string url)
+        private async Task<List<string>> TestPathBasedAccessControlAsync(string url)
         {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
-            var loginEndpoint = FindLoginEndpoint(url);
+            var results = new List<string>();
 
-            if (loginEndpoint == null)
-                return vulnerabilities;
+            OnScanProgress?.Invoke($"Testing path-based access control bypass on {url}...");
 
-            var weakCredentials = new[]
+            var bypassTechniques = new[]
             {
-                ("admin", "admin"), ("admin", "password"), ("admin", "123456"),
-                ("administrator", "administrator"), ("root", "root"), ("root", "toor"),
-                ("user", "user"), ("test", "test"), ("guest", "guest"),
-                ("admin", "admin123"), ("admin", "P@ssw0rd")
+                url.Replace("/admin", "/admin/"),
+                url.Replace("/admin", "/admin.."),
+                url.Replace("/admin", "/./admin"),
+                url.Replace("/admin", "/admin/."),
+                url.Replace("/admin", "//admin"),
+                url + "/.",
+                url + "/..",
+                url.ToUpper(),
+                url.Replace("/", "\\")
             };
 
-            foreach (var (username, password) in weakCredentials.Take(5)) // Limit to prevent lockouts
+            foreach (var testUrl in bypassTechniques)
             {
                 try
                 {
-                    var result = await TestLogin(loginEndpoint, username, password);
+                    var response = await _httpClient.GetAsync(testUrl);
 
-                    if (result.IsSuccessful && IsLoginSuccessful(result.Response))
+                    if (response.IsSuccessStatusCode)
                     {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
+                        results.Add($"Path-based access control bypass: {testUrl}");
+                        results.Add(GenerateAccessControlBypassPoC(url, testUrl));
+                    }
+
+                    await Task.Delay(100);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error testing path bypass: {ex.Message}");
+                }
+            }
+
+            return results;
+        }
+
+        #endregion
+
+        #region A02: Enhanced Cryptographic Failures Testing
+
+        /// <summary>
+        /// Enhanced weak cryptography detection
+        /// </summary>
+        private async Task<List<string>> TestEnhancedCryptographicFailuresAsync(string url)
+        {
+            var results = new List<string>();
+
+            OnScanProgress?.Invoke($"Testing enhanced cryptographic failures on {url}...");
+
+            // Test weak encryption algorithms
+            results.AddRange(await TestWeakEncryptionAsync(url));
+
+            // Test for exposed sensitive data
+            results.AddRange(await TestSensitiveDataExposureAsync(url));
+
+            // Test weak hashing
+            results.AddRange(await TestWeakHashingAsync(url));
+
+            return results;
+        }
+
+        private async Task<List<string>> TestWeakEncryptionAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                var content = await response.Content.ReadAsStringAsync();
+
+                var weakAlgorithms = new[]
+                {
+                    "DES", "RC4", "MD5", "SHA1", "ECB",
+                    "des_", "rc4_", "md5(", "sha1("
+                };
+
+                foreach (var algorithm in weakAlgorithms)
+                {
+                    if (content.Contains(algorithm, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add($"Weak cryptographic algorithm detected: {algorithm}");
+                        results.Add(GenerateWeakCryptoPoC(url, algorithm));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error testing weak encryption: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        private async Task<List<string>> TestSensitiveDataExposureAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                var content = await response.Content.ReadAsStringAsync();
+
+                var sensitivePatterns = new Dictionary<string, string>
+                {
+                    { "password", @"password[""']?\s*[:=]\s*[""']?[\w@#$%]+[""']?" },
+                    { "api_key", @"api[_-]?key[""']?\s*[:=]\s*[""']?[\w-]+[""']?" },
+                    { "secret", @"secret[""']?\s*[:=]\s*[""']?[\w-]+[""']?" },
+                    { "token", @"token[""']?\s*[:=]\s*[""']?[\w.-]+[""']?" },
+                    { "credit_card", @"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b" },
+                    { "ssn", @"\b\d{3}-\d{2}-\d{4}\b" }
+                };
+
+                foreach (var pattern in sensitivePatterns)
+                {
+                    if (System.Text.RegularExpressions.Regex.IsMatch(content, pattern.Value,
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                    {
+                        results.Add($"Sensitive data exposure detected: {pattern.Key}");
+                        results.Add(GenerateSensitiveDataExposurePoC(url, pattern.Key));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error testing sensitive data exposure: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        private async Task<List<string>> TestWeakHashingAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                // Test password reset functionality
+                var resetUrl = $"{url}/reset-password";
+                var response = await _httpClient.GetAsync(resetUrl);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+
+                    // Check for predictable tokens
+                    if (content.Contains("token=") &&
+                        (content.Contains("md5") || content.Length < 32))
+                    {
+                        results.Add("Weak password reset token detected");
+                        results.Add(GenerateWeakHashingPoC(url));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error testing weak hashing: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        #endregion
+
+        #region A06: Enhanced Vulnerable Components Testing
+
+        /// <summary>
+        /// Enhanced detection of vulnerable and outdated components
+        /// </summary>
+        private async Task<List<string>> TestEnhancedVulnerableComponentsAsync(string url)
+        {
+            var results = new List<string>();
+
+            OnScanProgress?.Invoke($"Testing for vulnerable components on {url}...");
+
+            // Test for known vulnerable libraries
+            results.AddRange(await DetectVulnerableLibrariesAsync(url));
+
+            // Test for outdated frameworks
+            results.AddRange(await DetectOutdatedFrameworksAsync(url));
+
+            // Test for vulnerable dependencies
+            results.AddRange(await DetectVulnerableDependenciesAsync(url));
+
+            return results;
+        }
+
+        private async Task<List<string>> DetectVulnerableLibrariesAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                var content = await response.Content.ReadAsStringAsync();
+
+                var vulnerableLibraries = new Dictionary<string, string>
+                {
+                    { "jQuery 1.", "jQuery version 1.x (vulnerable to XSS)" },
+                    { "jQuery 2.", "jQuery version 2.x (known vulnerabilities)" },
+                    { "angular.js/1.2", "AngularJS 1.2.x (vulnerable to sandbox bypass)" },
+                    { "bootstrap/3.", "Bootstrap 3.x (XSS vulnerabilities)" },
+                    { "moment.js", "Moment.js (deprecated, has vulnerabilities)" },
+                    { "lodash.js", "Lodash (check version for prototype pollution)" }
+                };
+
+                foreach (var library in vulnerableLibraries)
+                {
+                    if (content.Contains(library.Key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add($"Vulnerable library detected: {library.Value}");
+                        results.Add(GenerateVulnerableComponentPoC(url, library.Key, library.Value));
+                    }
+                }
+
+                // Check headers for server version
+                if (response.Headers.Contains("X-Powered-By"))
+                {
+                    var poweredBy = response.Headers.GetValues("X-Powered-By").FirstOrDefault();
+                    results.Add($"Server technology exposed: {poweredBy}");
+                    results.Add(GenerateServerExposurePoC(url, poweredBy));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error detecting vulnerable libraries: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        private async Task<List<string>> DetectOutdatedFrameworksAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+
+                // Check for framework-specific headers or patterns
+                if (response.Headers.Contains("X-AspNet-Version"))
+                {
+                    var version = response.Headers.GetValues("X-AspNet-Version").FirstOrDefault();
+                    results.Add($"ASP.NET version exposed: {version}");
+                }
+
+                if (response.Headers.Contains("X-AspNetMvc-Version"))
+                {
+                    var version = response.Headers.GetValues("X-AspNetMvc-Version").FirstOrDefault();
+                    results.Add($"ASP.NET MVC version exposed: {version}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error detecting outdated frameworks: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        private async Task<List<string>> DetectVulnerableDependenciesAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                // Check for common dependency files
+                var dependencyFiles = new[]
+                {
+                    $"{url}/package.json",
+                    $"{url}/composer.json",
+                    $"{url}/requirements.txt",
+                    $"{url}/Gemfile",
+                    $"{url}/pom.xml"
+                };
+
+                foreach (var file in dependencyFiles)
+                {
+                    try
+                    {
+                        var response = await _httpClient.GetAsync(file);
+
+                        if (response.IsSuccessStatusCode)
                         {
-                            Category = "A07:2025 - Authentication Failures",
-                            Type = "Weak Default Credentials",
-                            Severity = "Critical",
-                            Description = $"Application accepts weak credentials: {username}/{password}",
-                            TestUrl = loginEndpoint,
-                            TestRequest = result.Request,
-                            TestResponse = "Login successful",
-                            Evidence = $"Authentication successful with credentials: {username}/{password}",
-                            PoC = GenerateWeakCredentialsPoC(loginEndpoint, username, password),
-                            CWE = "CWE-798"
-                        });
+                            results.Add($"Exposed dependency file: {file}");
+                            results.Add(GenerateDependencyExposurePoC(url, file));
+                        }
+                    }
+                    catch
+                    {
+                        // Continue checking other files
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error detecting vulnerable dependencies: {ex.Message}");
+            }
+
+            return results;
+        }
+
+        #endregion
+
+        #region A07: Enhanced Authentication Failures Testing
+
+        /// <summary>
+        /// Enhanced authentication failure testing
+        /// </summary>
+        private async Task<List<string>> TestEnhancedAuthenticationFailuresAsync(string url)
+        {
+            var results = new List<string>();
+
+            OnScanProgress?.Invoke($"Testing enhanced authentication failures on {url}...");
+
+            // Test for brute force protection
+            results.AddRange(await TestBruteForceProtectionAsync(url));
+
+            // Test session management
+            results.AddRange(await TestEnhancedSessionManagementAsync(url));
+
+            // Test for authentication bypass
+            results.AddRange(await TestAuthenticationBypassAsync(url));
+
+            return results;
+        }
+
+        private async Task<List<string>> TestBruteForceProtectionAsync(string url)
+        {
+            var results = new List<string>();
+
+            try
+            {
+                var loginUrl = url.Contains("login") ? url : $"{url}/login";
+                var attempts = 0;
+                var maxAttempts = 10;
+
+                for (int i = 0; i < maxAttempts; i++)
+                {
+                    var postData = new StringContent(
+                        $"{{\"username\":\"admin\",\"password\":\"test{i}\"}}",
+                        Encoding.UTF8,
+                        "application/json"
+                    );
+
+                    var response = await _httpClient.PostAsync(loginUrl, postData);
+                    attempts++;
+
+                    if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests &&
+                        !response.Headers.Contains("X-RateLimit-Remaining"))
+                    {
+                        await Task.Delay(100);
+                    }
+                    else
+                    {
+                        // Rate limiting detected
                         break;
                     }
-
-                    // Small delay to avoid triggering rate limiting
-                    await Task.Delay(500);
                 }
-                catch { continue; }
+
+                if (attempts >= maxAttempts)
+                {
+                    results.Add("No brute force protection detected");
+                    results.Add(GenerateBruteForcePoC(url));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error testing brute force protection: {ex.Message}");
             }
 
-            return vulnerabilities;
+            return results;
         }
 
-        /// <summary>
-        /// Session fixation testing
-        /// </summary>
-        private async Task<List<OWASPT10Vulnerability>> TestSessionFixation(string url)
+        private async Task<List<string>> TestEnhancedSessionManagementAsync(string url)
         {
-            var vulnerabilities = new List<OWASPT10Vulnerability>();
+            var results = new List<string>();
 
             try
             {
-                // First request to get session
-                var result1 = await TestRequestWithHeaders(url, "GET");
-                var sessionId1 = ExtractSessionId(result1.Headers);
+                var response = await _httpClient.GetAsync(url);
 
-                if (!string.IsNullOrEmpty(sessionId1))
+                if (response.Headers.Contains("Set-Cookie"))
                 {
-                    // Second request with same session
-                    var request2 = new HttpRequestMessage(HttpMethod.Get, url);
-                    request2.Headers.Add("Cookie", $"PHPSESSID={sessionId1}");
+                    var cookies = response.Headers.GetValues("Set-Cookie");
 
-                    var response2 = await _httpClient.SendAsync(request2);
-                    var headers2 = response2.Headers.ToDictionary(h => h.Key, h => string.Join(", ", h.Value));
-                    var sessionId2 = ExtractSessionId(headers2);
-
-                    // If session ID doesn't change, vulnerable to fixation
-                    if (sessionId1 == sessionId2)
+                    foreach (var cookie in cookies)
                     {
-                        vulnerabilities.Add(new OWASPT10Vulnerability
+                        if (!cookie.Contains("HttpOnly", StringComparison.OrdinalIgnoreCase))
                         {
-                            Category = "A07:2025 - Authentication Failures",
-                            Type = "Session Fixation Vulnerability",
-                            Severity = "High",
-                            Description = "Application doesn't regenerate session ID after authentication",
-                            TestUrl = url,
-                            TestRequest = $"GET {url}\nCookie: PHPSESSID={sessionId1}",
-                            TestResponse = $"Session ID remained: {sessionId2}",
-                            Evidence = "Session ID was not regenerated",
-                            PoC = GenerateSessionFixationPoC(url),
-                            CWE = "CWE-384"
-                        });
+                            results.Add("Cookie without HttpOnly flag detected");
+                        }
+
+                        if (!cookie.Contains("Secure", StringComparison.OrdinalIgnoreCase))
+                        {
+                            results.Add("Cookie without Secure flag detected");
+                        }
+
+                        if (!cookie.Contains("SameSite", StringComparison.OrdinalIgnoreCase))
+                        {
+                            results.Add("Cookie without SameSite attribute detected");
+                        }
+                    }
+
+                    if (results.Any())
+                    {
+                        results.Add(GenerateSessionManagementPoC(url));
                     }
                 }
             }
-            catch { }
-
-            return vulnerabilities;
-        }
-
-        #endregion
-
-        #region Detection Helper Methods
-
-        private bool IsPathTraversalVulnerable(string response, string payload)
-        {
-            if (string.IsNullOrEmpty(response))
-                return false;
-
-            // Check for typical file disclosure
-            var indicators = new[]
+            catch (Exception ex)
             {
-                "root:x:", "/bin/bash", "win.ini", "[boot loader]",
-                "[extensions]", "[fonts]", "System.IO.FileNotFoundException"
-            };
-
-            return indicators.Any(indicator => response.Contains(indicator));
-        }
-
-        private bool IsOpenRedirectVulnerable(Dictionary<string, string> headers, int statusCode, string payload)
-        {
-            // Check if status code is a redirect
-            if (statusCode != 301 && statusCode != 302 && statusCode != 303 && statusCode != 307 && statusCode != 308)
-                return false;
-
-            // Check if Location header points to external site
-            if (headers.TryGetValue("Location", out var location))
-            {
-                return location.Contains("evil.com") || location.Contains("attacker.com") ||
-                       location.StartsWith("http://") && !location.Contains("localhost");
+                System.Diagnostics.Debug.WriteLine($"Error testing session management: {ex.Message}");
             }
 
-            return false;
+            return results;
         }
 
-        private bool IsVerboseError(string response)
+        private async Task<List<string>> TestAuthenticationBypassAsync(string url)
         {
-            if (string.IsNullOrEmpty(response))
-                return false;
+            var results = new List<string>();
 
-            var verboseErrorPatterns = new[]
-            {
-                "Stack trace:", "at ", ".java:", ".cs:",
-                "System.Exception", "printStackTrace",
-                "Fatal error:", "Warning:", "Notice:",
-                "Debug mode", "Development mode",
-                "Application error", "Internal Server Error",
-                "Database error", "Query failed"
-            };
-
-            return verboseErrorPatterns.Any(pattern =>
-                response.Contains(pattern, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private string GetParameterValue(string url, string param)
-        {
             try
             {
-                var uri = new Uri(url);
-                var queryParams = HttpUtility.ParseQueryString(uri.Query);
-                return queryParams[param] ?? "";
+                // Test common authentication bypass techniques
+                var bypassPayloads = new Dictionary<string, string>
+                {
+                    { "SQL Injection", "admin' OR '1'='1" },
+                    { "NoSQL Injection", "{\"$gt\":\"\"}" },
+                    { "Null byte", "admin%00" },
+                    { "Empty password", "" }
+                };
+
+                foreach (var payload in bypassPayloads)
+                {
+                    var postData = new StringContent(
+                        $"{{\"username\":\"{payload.Value}\",\"password\":\"{payload.Value}\"}}",
+                        Encoding.UTF8,
+                        "application/json"
+                    );
+
+                    var response = await _httpClient.PostAsync(url, postData);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var content = await response.Content.ReadAsStringAsync();
+
+                        if (content.Contains("success", StringComparison.OrdinalIgnoreCase) ||
+                            content.Contains("dashboard", StringComparison.OrdinalIgnoreCase))
+                        {
+                            results.Add($"Authentication bypass via {payload.Key}");
+                            results.Add(GenerateAuthBypassPoC(url, payload.Key, payload.Value));
+                        }
+                    }
+
+                    await Task.Delay(100);
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return "";
+                System.Diagnostics.Debug.WriteLine($"Error testing authentication bypass: {ex.Message}");
             }
+
+            return results;
         }
 
         #endregion
 
-        #region Advanced PoC Generators (continued next message due to length)
+        #region Helper Methods
 
-        // Implementation continued in next part...
+        private string ExtractIdFromUrl(string url)
+        {
+            var segments = new Uri(url).Segments;
+            return segments.Length > 0 ? segments.Last().TrimEnd('/') : "1";
+        }
+
+        private bool DetectIDORVulnerability(string content, HttpResponseMessage response,
+            string testId, string currentId)
+        {
+            // Detect if we can access different user's data
+            return response.IsSuccessStatusCode &&
+                   content.Length > 100 &&
+                   testId != currentId;
+        }
+
+        #endregion
+
+        #region Additional PoC Generators
+
+        private string GenerateAccessControlBypassPoC(string originalUrl, string bypassUrl)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Access Control Bypass Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Original URL: {originalUrl}");
+            sb.AppendLine($"Bypass URL: {bypassUrl}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Implement proper authorization checks");
+            return sb.ToString();
+        }
+
+        private string GenerateWeakCryptoPoC(string url, string algorithm)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Weak Cryptography Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Weak algorithm detected: {algorithm}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Use strong encryption (AES-256, RSA-2048+)");
+            return sb.ToString();
+        }
+
+        private string GenerateSensitiveDataExposurePoC(string url, string dataType)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Sensitive Data Exposure Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Exposed data type: {dataType}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Encrypt sensitive data, remove from responses");
+            return sb.ToString();
+        }
+
+        private string GenerateWeakHashingPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Weak Hashing Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Use bcrypt, Argon2, or PBKDF2");
+            return sb.ToString();
+        }
+
+        private string GenerateVulnerableComponentPoC(string url, string component, string description)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Vulnerable Component Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Component: {component}");
+            sb.AppendLine($"Issue: {description}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Update to latest secure version");
+            return sb.ToString();
+        }
+
+        private string GenerateServerExposurePoC(string url, string serverInfo)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Server Information Exposure Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Exposed: {serverInfo}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Remove version headers");
+            return sb.ToString();
+        }
+
+        private string GenerateDependencyExposurePoC(string url, string file)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Dependency File Exposure Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Exposed file: {file}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Restrict access to dependency files");
+            return sb.ToString();
+        }
+
+        private string GenerateBruteForcePoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Brute Force Vulnerability Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Implement rate limiting, CAPTCHA, account lockout");
+            return sb.ToString();
+        }
+
+        private string GenerateSessionManagementPoC(string url)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Session Management Vulnerability Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Use HttpOnly, Secure, and SameSite flags");
+            return sb.ToString();
+        }
+
+        private string GenerateAuthBypassPoC(string url, string technique, string payload)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("=== Authentication Bypass Proof of Concept ===");
+            sb.AppendLine();
+            sb.AppendLine($"Technique: {technique}");
+            sb.AppendLine($"Payload: {payload}");
+            sb.AppendLine();
+            sb.AppendLine("Remediation: Implement proper input validation and authentication");
+            return sb.ToString();
+        }
+
         #endregion
     }
 }
