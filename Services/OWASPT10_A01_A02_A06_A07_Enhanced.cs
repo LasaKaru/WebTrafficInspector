@@ -231,7 +231,7 @@ namespace WebTrafficInspector.Services
                     if (content.Contains(algorithm, StringComparison.OrdinalIgnoreCase))
                     {
                         results.Add($"Weak cryptographic algorithm detected: {algorithm}");
-                        results.Add(GenerateWeakCryptoPoC(url, algorithm));
+                        results.Add(GenerateWeakCryptoPoC(algorithm));
                     }
                 }
             }
@@ -361,7 +361,7 @@ namespace WebTrafficInspector.Services
                     if (content.Contains(library.Key, StringComparison.OrdinalIgnoreCase))
                     {
                         results.Add($"Vulnerable library detected: {library.Value}");
-                        results.Add(GenerateVulnerableComponentPoC(url, library.Key, library.Value));
+                        results.Add(GenerateVulnerableComponentPoC(library.Key, library.Value));
                     }
                 }
 
@@ -622,8 +622,20 @@ namespace WebTrafficInspector.Services
 
         private string ExtractIdFromUrl(string url)
         {
-            var segments = new Uri(url).Segments;
-            return segments.Length > 0 ? segments.Last().TrimEnd('/') : "1";
+            try
+            {
+                if (string.IsNullOrEmpty(url))
+                    return "1";
+
+                var uri = new Uri(url);
+                var segments = uri.Segments;
+                return segments.Length > 0 ? segments.Last().TrimEnd('/') : "1";
+            }
+            catch (Exception)
+            {
+                // If URI parsing fails, return default ID
+                return "1";
+            }
         }
 
         private bool DetectIDORVulnerability(string content, HttpResponseMessage response,
@@ -651,17 +663,6 @@ namespace WebTrafficInspector.Services
             return sb.ToString();
         }
 
-        private string GenerateWeakCryptoPoC(string url, string algorithm)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("=== Weak Cryptography Proof of Concept ===");
-            sb.AppendLine();
-            sb.AppendLine($"Weak algorithm detected: {algorithm}");
-            sb.AppendLine();
-            sb.AppendLine("Remediation: Use strong encryption (AES-256, RSA-2048+)");
-            return sb.ToString();
-        }
-
         private string GenerateSensitiveDataExposurePoC(string url, string dataType)
         {
             var sb = new StringBuilder();
@@ -679,18 +680,6 @@ namespace WebTrafficInspector.Services
             sb.AppendLine("=== Weak Hashing Proof of Concept ===");
             sb.AppendLine();
             sb.AppendLine("Remediation: Use bcrypt, Argon2, or PBKDF2");
-            return sb.ToString();
-        }
-
-        private string GenerateVulnerableComponentPoC(string url, string component, string description)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("=== Vulnerable Component Proof of Concept ===");
-            sb.AppendLine();
-            sb.AppendLine($"Component: {component}");
-            sb.AppendLine($"Issue: {description}");
-            sb.AppendLine();
-            sb.AppendLine("Remediation: Update to latest secure version");
             return sb.ToString();
         }
 

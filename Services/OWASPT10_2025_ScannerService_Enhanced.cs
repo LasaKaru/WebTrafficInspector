@@ -528,7 +528,8 @@ namespace WebTrafficInspector.Services
         /// </summary>
         private async Task<HttpResponseMessage> TestRequestWithHeaders(string url, Dictionary<string, string> headers)
         {
-            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            try
             {
                 foreach (var header in headers)
                 {
@@ -536,6 +537,11 @@ namespace WebTrafficInspector.Services
                 }
 
                 return await _httpClient.SendAsync(request);
+            }
+            catch
+            {
+                request.Dispose();
+                throw;
             }
         }
 

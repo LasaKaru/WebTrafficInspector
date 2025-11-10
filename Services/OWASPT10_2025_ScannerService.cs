@@ -439,21 +439,27 @@ namespace WebTrafficInspector.Services
                 }
 
                 // Test 3: Weak encryption indicators
-                if (result.Response.Contains("MD5", StringComparison.OrdinalIgnoreCase) ||
-                    result.Response.Contains("SHA1", StringComparison.OrdinalIgnoreCase) ||
-                    result.Response.Contains("DES", StringComparison.OrdinalIgnoreCase))
+                var weakAlgorithmDetected = "";
+                if (result.Response.Contains("MD5", StringComparison.OrdinalIgnoreCase))
+                    weakAlgorithmDetected = "MD5";
+                else if (result.Response.Contains("SHA1", StringComparison.OrdinalIgnoreCase))
+                    weakAlgorithmDetected = "SHA1";
+                else if (result.Response.Contains("DES", StringComparison.OrdinalIgnoreCase))
+                    weakAlgorithmDetected = "DES";
+
+                if (!string.IsNullOrEmpty(weakAlgorithmDetected))
                 {
                     vulnerabilities.Add(new OWASPT10Vulnerability
                     {
                         Category = "A04:2025 - Cryptographic Failures",
                         Type = "Weak Cryptographic Algorithm",
                         Severity = "High",
-                        Description = "Application uses weak cryptographic algorithms (MD5/SHA1/DES)",
+                        Description = $"Application uses weak cryptographic algorithm ({weakAlgorithmDetected})",
                         TestUrl = url,
                         TestRequest = result.Request,
                         TestResponse = result.Response,
                         Evidence = "Weak algorithm reference detected in response",
-                        PoC = GenerateWeakCryptoPoC("Weak cryptographic algorithm"),
+                        PoC = GenerateWeakCryptoPoC(weakAlgorithmDetected),
                         CWE = "CWE-327"
                     });
                 }
@@ -1156,41 +1162,7 @@ namespace WebTrafficInspector.Services
 
         #region PoC Generation Methods
 
-        private string GenerateCommandInjectionPoC(string url, string param, string payload)
-        {
-            return $@"Command Injection PoC:
-
-Parameter: {param}
-Payload: {payload}
-
-Malicious Request:
-   GET {ReplaceParameter(url, param, payload)}
-
-Exploitation:
-   1. Inject OS command in '{param}' parameter
-   2. Execute arbitrary commands on server
-   3. Full system compromise
-
-Example Payloads:
-   - ; cat /etc/passwd
-   - | whoami
-   - & dir
-   - $(id)
-
-Impact:
-   - Remote code execution
-   - Server compromise
-   - Data breach
-   - Malware installation
-
-Remediation:
-   - Never pass user input to system commands
-   - Use safe APIs instead of shell execution
-   - Input validation and sanitization
-   - Principle of least privilege";
-        }
-
-        // Note: Other PoC generation methods have been moved to OWASPT10_PoCGenerators_Enhanced.cs
+        // Note: All PoC generation methods have been moved to OWASPT10_PoCGenerators_Enhanced.cs
         // to avoid duplication and maintain cleaner code organization
 
         #endregion
