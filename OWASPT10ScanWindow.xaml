@@ -1,0 +1,485 @@
+<Window x:Class="WebTrafficInspector.OWASPT10ScanWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OWASP Top 10 2025 - Security Scanner"
+        Height="900" Width="1400"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E1E">
+
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1C97EA"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#555555"/>
+                    <Setter Property="Foreground" Value="#999999"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Foreground" Value="#D4D4D4"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#252526"/>
+            <Setter Property="Foreground" Value="#D4D4D4"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#3E3E42"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="5"/>
+        </Style>
+
+        <Style TargetType="ProgressBar">
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Foreground" Value="#007ACC"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2D2D30" Padding="10" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="🛡️ OWASP Top 10 2025 - Automatic Security Scanner"
+                          FontSize="18" FontWeight="Bold"/>
+                <TextBlock x:Name="StatusText"
+                          Text="Ready to scan for OWASP Top 10 2025 vulnerabilities"
+                          FontSize="12"
+                          Foreground="#00D000"
+                          Margin="0,5,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Control Panel -->
+        <Border Grid.Row="1" Background="#2D2D30" Padding="10" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <CheckBox x:Name="EnableScannerCheckBox"
+                             Content="Enable Automatic Scanning"
+                             IsChecked="True"
+                             Checked="EnableScannerCheckBox_Checked"
+                             Unchecked="EnableScannerCheckBox_Unchecked"
+                             VerticalAlignment="Center"
+                             FontWeight="Bold"/>
+                    <TextBlock Text="|" Margin="10,0" VerticalAlignment="Center"/>
+                    <Button x:Name="ScanSelectedButton" Content="Scan Selected URL" Click="ScanSelectedButton_Click"/>
+                    <Button x:Name="ScanAllButton" Content="Scan All URLs" Click="ScanAllButton_Click"/>
+                    <Button x:Name="StopScanButton" Content="Stop Scan" Click="StopScanButton_Click" IsEnabled="False"/>
+                    <Button x:Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock x:Name="StatsText"
+                              Text="Scanned: 0 | Vulnerable: 0"
+                              VerticalAlignment="Center"
+                              Margin="10,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Panel: Scanned URLs List -->
+            <Border Grid.Column="0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Scanned URLs" FontWeight="Bold" FontSize="14"/>
+
+                    <StackPanel Grid.Row="1" Margin="0,10,0,10">
+                        <ProgressBar x:Name="ScanProgressBar"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    Value="0"
+                                    Visibility="Collapsed"/>
+                        <TextBlock x:Name="ProgressText"
+                                  Text=""
+                                  FontSize="10"
+                                  Foreground="#888888"
+                                  Margin="0,5,0,0"
+                                  Visibility="Collapsed"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="2"
+                             x:Name="ScannedUrlsDataGrid"
+                             SelectionChanged="ScannedUrlsDataGrid_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="URL" Binding="{Binding Url}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Vulns" Binding="{Binding TotalVulnerabilitiesFound}" Width="60">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding TotalVulnerabilitiesFound}" Value="0">
+                                                <Setter Property="Foreground" Value="#00D000"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasVulnerabilities}" Value="True">
+                                                <Setter Property="Foreground" Value="Red"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="White"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Status}" Value="Scanning...">
+                                                <Setter Property="Foreground" Value="Yellow"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Complete">
+                                                <Setter Property="Foreground" Value="#00D000"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Status}" Value="Error">
+                                                <Setter Property="Foreground" Value="Red"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1"
+                         Background="#3E3E42"
+                         HorizontalAlignment="Stretch"
+                         ResizeBehavior="PreviousAndNext"/>
+
+            <!-- Right Panel: Scan Results and Details -->
+            <Border Grid.Column="2" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Scan Results and Vulnerabilities" FontWeight="Bold" FontSize="14"/>
+
+                    <TabControl Grid.Row="1"
+                               x:Name="DetailsTabControl"
+                               Background="#252526"
+                               BorderBrush="#3E3E42"
+                               Margin="0,10,0,0">
+                        <TabControl.Resources>
+                            <Style TargetType="TabItem">
+                                <Setter Property="Background" Value="#2D2D30"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="Padding" Value="10,5"/>
+                            </Style>
+                        </TabControl.Resources>
+
+                        <!-- Summary Tab -->
+                        <TabItem Header="Summary">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Scan Summary" FontWeight="Bold" FontSize="12" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="URL:" FontWeight="Bold"/>
+                                    <TextBox x:Name="SummaryUrlTextBox" IsReadOnly="True" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Scan Duration:" FontWeight="Bold"/>
+                                    <TextBox x:Name="ScanDurationTextBox" IsReadOnly="True" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Total Vulnerabilities Found:" FontWeight="Bold"/>
+                                    <TextBox x:Name="TotalVulnerabilitiesTextBox" IsReadOnly="True" Margin="0,0,0,10"/>
+
+                                    <TextBlock Text="Vulnerabilities by Severity:" FontWeight="Bold" Margin="0,10,0,5"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="#DC3545" Padding="10" Margin="2">
+                                            <StackPanel>
+                                                <TextBlock Text="Critical" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBlock x:Name="CriticalCountText" Text="0" HorizontalAlignment="Center" FontSize="20"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="1" Background="#FD7E14" Padding="10" Margin="2">
+                                            <StackPanel>
+                                                <TextBlock Text="High" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBlock x:Name="HighCountText" Text="0" HorizontalAlignment="Center" FontSize="20"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="2" Background="#FFC107" Padding="10" Margin="2">
+                                            <StackPanel>
+                                                <TextBlock Text="Medium" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBlock x:Name="MediumCountText" Text="0" HorizontalAlignment="Center" FontSize="20"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="3" Background="#28A745" Padding="10" Margin="2">
+                                            <StackPanel>
+                                                <TextBlock Text="Low" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBlock x:Name="LowCountText" Text="0" HorizontalAlignment="Center" FontSize="20"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <TextBlock Text="OWASP Top 10 2025 Categories Tested:" FontWeight="Bold" Margin="0,10,0,5"/>
+                                    <TextBox x:Name="CategoriesTextBox"
+                                            TextWrapping="Wrap"
+                                            AcceptsReturn="True"
+                                            Height="200"
+                                            IsReadOnly="True"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <!-- Vulnerabilities Tab -->
+                        <TabItem Header="Vulnerabilities">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="250"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Filter by Severity:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <CheckBox x:Name="FilterCriticalCheckBox" Content="Critical" IsChecked="True" Checked="FilterCheckBox_Changed" Unchecked="FilterCheckBox_Changed"/>
+                                    <CheckBox x:Name="FilterHighCheckBox" Content="High" IsChecked="True" Checked="FilterCheckBox_Changed" Unchecked="FilterCheckBox_Changed"/>
+                                    <CheckBox x:Name="FilterMediumCheckBox" Content="Medium" IsChecked="True" Checked="FilterCheckBox_Changed" Unchecked="FilterCheckBox_Changed"/>
+                                    <CheckBox x:Name="FilterLowCheckBox" Content="Low" IsChecked="True" Checked="FilterCheckBox_Changed" Unchecked="FilterCheckBox_Changed"/>
+                                </StackPanel>
+
+                                <DataGrid Grid.Row="1"
+                                         x:Name="VulnerabilitiesDataGrid"
+                                         SelectionChanged="VulnerabilitiesDataGrid_SelectionChanged">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="200">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="FontSize" Value="10"/>
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="150">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="FontSize" Value="10"/>
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="70">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Severity}" Value="Critical">
+                                                            <Setter Property="Foreground" Value="#DC3545"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Severity}" Value="High">
+                                                            <Setter Property="Foreground" Value="#FD7E14"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Severity}" Value="Medium">
+                                                            <Setter Property="Foreground" Value="#FFC107"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Severity}" Value="Low">
+                                                            <Setter Property="Foreground" Value="#28A745"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="CWE" Binding="{Binding CWE}" Width="80">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#888888"/>
+                                                    <Setter Property="FontSize" Value="9"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <TextBlock Grid.Row="2" Text="Vulnerability Details" FontWeight="Bold" FontSize="12" Margin="0,10,0,5"/>
+
+                                <TextBox Grid.Row="3"
+                                        x:Name="VulnerabilityDetailsTextBox"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"/>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Proof of Concept (PoC) Tab -->
+                        <TabItem Header="Proof of Concept (PoC)">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="10">
+                                    <TextBlock Text="Proof of Concept (PoC) - Exploitation Steps" FontWeight="Bold" FontSize="12" Margin="0,0,0,10"/>
+                                    <TextBox x:Name="PoCTextBox"
+                                            TextWrapping="Wrap"
+                                            AcceptsReturn="True"
+                                            VerticalScrollBarVisibility="Auto"
+                                            Height="600"
+                                            IsReadOnly="True"
+                                            FontFamily="Consolas"
+                                            FontSize="11"/>
+                                    <Button Content="Copy PoC to Clipboard" Click="CopyPoCButton_Click" Margin="0,10,0,0" HorizontalAlignment="Left"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <!-- Request/Response Tab -->
+                        <TabItem Header="Request/Response">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="5"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="Test Request" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBox Grid.Row="1"
+                                        x:Name="TestRequestTextBox"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"
+                                        FontFamily="Consolas"
+                                        FontSize="10"/>
+
+                                <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="#3E3E42"/>
+
+                                <TextBlock Grid.Row="3" Text="Test Response" FontWeight="Bold" FontSize="12" Margin="0,5,0,5"/>
+                                <TextBox Grid.Row="4"
+                                        x:Name="TestResponseTextBox"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"
+                                        FontFamily="Consolas"
+                                        FontSize="10"/>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- Original Request/Response Tab -->
+                        <TabItem Header="Original Request/Response">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="5"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Text="Original Request" FontWeight="Bold" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBox Grid.Row="1"
+                                        x:Name="OriginalRequestTextBox"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"
+                                        FontFamily="Consolas"
+                                        FontSize="10"/>
+
+                                <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="#3E3E42"/>
+
+                                <TextBlock Grid.Row="3" Text="Original Response" FontWeight="Bold" FontSize="12" Margin="0,5,0,5"/>
+                                <TextBox Grid.Row="4"
+                                        x:Name="OriginalResponseTextBox"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"
+                                        FontFamily="Consolas"
+                                        FontSize="10"/>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Bottom Panel: Action Buttons -->
+        <Border Grid.Row="3" Background="#2D2D30" Padding="10" Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="ExportHTMLReportButton" Content="📊 Export HTML Report" Click="ExportHTMLReportButton_Click" FontWeight="Bold"/>
+                <Button x:Name="ExportJSONButton" Content="Export JSON" Click="ExportJSONButton_Click"/>
+                <Button x:Name="ClearResultsButton" Content="Clear Results" Click="ClearResultsButton_Click"/>
+                <Button x:Name="CloseButton" Content="Close" Click="CloseButton_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

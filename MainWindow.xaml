@@ -324,6 +324,14 @@
                         <MenuItem Header="Show OAuth Detection Window..." Click="ShowOAuthDetectionWindow_Click"/>
                         <MenuItem Header="Toggle Popup Notifications" Click="ToggleOAuthNotifications_Click"/>
                     </MenuItem>
+                    <MenuItem Header="OWASP Top 10 2025 Scanner">
+                        <MenuItem.Icon>
+                            <TextBlock Text="🛡️" FontSize="14"/>
+                        </MenuItem.Icon>
+                        <MenuItem Header="Show OWASP Scanner Window..." Click="ShowOWASPScanWindow_Click"/>
+                        <MenuItem Header="Toggle Automatic Scanning" Click="ToggleOWASPScanning_Click"/>
+                        <MenuItem Header="Export HTML Report..." Click="ExportOWASPReport_Click"/>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem Header="_Comparison Tool">
                     <MenuItem.Icon>

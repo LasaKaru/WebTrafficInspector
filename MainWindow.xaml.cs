@@ -603,6 +603,7 @@ namespace WebTrafficInspector
         private AdvancedReportGeneratorService _advancedReportService;
         private OAuthOIDCVulnerabilityScannerService _oauthScanner;
         private PrivilegeEscalationScannerService _privEscScanner;
+        private OWASPT10_2025_ScannerService _owaspScanner;
         private bool _enableOAuthNotifications = false; // Toggle for OAuth detection popup notifications
         private ObservableCollection<TrafficEntry> _trafficEntries;
         private ObservableCollection<TrafficEntry> _filteredTrafficEntries;
@@ -719,12 +720,17 @@ namespace WebTrafficInspector
             _advancedReportService = new AdvancedReportGeneratorService();
             _oauthScanner = new OAuthOIDCVulnerabilityScannerService();
             _privEscScanner = new PrivilegeEscalationScannerService();
+            _owaspScanner = new OWASPT10_2025_ScannerService();
             _proxyService = new ProxyService();
             _proxyService.TrafficCaptured += OnTrafficCaptured;
 
             // Setup OAuth/OIDC detection events
             _oauthScanner.OAuthFlowDetected += OnOAuthFlowDetected;
             _oauthScanner.VulnerabilityFound += OnOAuthVulnerabilityFound;
+
+            // Setup OWASP Top 10 scanner events
+            _owaspScanner.ScanProgress += OnOWASPScanProgress;
+            _owaspScanner.VulnerabilityFound += OnOWASPVulnerabilityFound;
 
             await StartProxyAsync();
             await InitializeWebViewAsync();
@@ -834,6 +840,15 @@ namespace WebTrafficInspector
                     _ = Task.Run(async () =>
                     {
                         await _autoAttackService.ProcessTrafficEntry(entry);
+                    });
+                }
+
+                // Automatically scan with OWASP Top 10 if enabled
+                if (_owaspScanner != null && _owaspScanner.IsEnabled)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await _owaspScanner.ScanUrl(entry.Url, entry);
                     });
                 }
 
@@ -4694,6 +4709,106 @@ namespace WebTrafficInspector
             catch (Exception ex)
             {
                 MessageBox.Show($"Error opening OAuth detection window: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // OWASP Top 10 2025 Scanner Event Handlers
+        private void OnOWASPScanProgress(object sender, OWASPT10ScanProgressEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                StatusText.Text = $"OWASP Scan: {e.CurrentCategory} - {e.Message} ({e.ProgressPercentage:F0}%)";
+            });
+        }
+
+        private void OnOWASPVulnerabilityFound(object sender, OWASPT10VulnerabilityFoundEventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                StatusText.Text = $"OWASP Vulnerability found: {e.Vulnerability.Type} ({e.Vulnerability.Severity})";
+            });
+        }
+
+        private void ShowOWASPScanWindow_Click(object sender, RoutedEventArgs e)
+        {
+            ShowOWASPScanWindow();
+        }
+
+        private void ShowOWASPScanWindow()
+        {
+            try
+            {
+                var scanWindow = new OWASPT10ScanWindow(_owaspScanner);
+                scanWindow.Owner = this;
+                scanWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening OWASP scanner window: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ToggleOWASPScanning_Click(object sender, RoutedEventArgs e)
+        {
+            if (_owaspScanner != null)
+            {
+                _owaspScanner.IsEnabled = !_owaspScanner.IsEnabled;
+                var status = _owaspScanner.IsEnabled ? "enabled" : "disabled";
+                MessageBox.Show($"OWASP Top 10 2025 automatic scanning {status}",
+                    "OWASP Scanner", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusText.Text = $"OWASP automatic scanning {status}";
+            }
+        }
+
+        private async void ExportOWASPReport_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "HTML Files (*.html)|*.html",
+                    DefaultExt = "html",
+                    FileName = $"OWASP_Top10_2025_Security_Report_{DateTime.Now:yyyyMMdd_HHmmss}.html"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    var allReports = _owaspScanner.GetAllScanResults();
+                    if (allReports.Count == 0)
+                    {
+                        MessageBox.Show("No scan results available to export", "No Results",
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    var reportGenerator = new OWASPT10HTMLReportGenerator();
+                    var html = reportGenerator.GenerateHTMLReport(allReports);
+
+                    await System.IO.File.WriteAllTextAsync(saveFileDialog.FileName, html);
+
+                    var result = MessageBox.Show(
+                        $"HTML report exported successfully!\n\nPath: {saveFileDialog.FileName}\n\nDo you want to open the report now?",
+                        "Export Successful",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = saveFileDialog.FileName,
+                            UseShellExecute = true
+                        });
+                    }
+
+                    StatusText.Text = "OWASP HTML report exported successfully";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to export OWASP report: {ex.Message}", "Export Error",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
